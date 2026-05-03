@@ -7,6 +7,30 @@ import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, C
 import { WindowContent } from '@/components/windows/WindowContent';
 import { Toaster } from '@/components/ui/toaster';
 
+function clampWindowToViewport(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  sidebarWidth: number,
+  viewportWidth?: number,
+  viewportHeight?: number,
+) {
+  const vw = viewportWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1280);
+  const vh = viewportHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 800);
+  const MIN_W = 240;
+  const MIN_H = 160;
+  const availW = Math.max(MIN_W, vw - sidebarWidth);
+  const availH = Math.max(MIN_H, vh);
+  const clampedW = Math.max(MIN_W, Math.min(width, availW));
+  const clampedH = Math.max(MIN_H, Math.min(height, availH));
+  const maxX = Math.max(sidebarWidth, vw - clampedW);
+  const maxY = Math.max(0, vh - clampedH);
+  const clampedX = Math.min(Math.max(sidebarWidth, x), maxX);
+  const clampedY = Math.min(Math.max(0, y), maxY);
+  return { x: clampedX, y: clampedY, width: clampedW, height: clampedH };
+}
+
 interface WindowState {
   id: string;
   title: string;
@@ -165,6 +189,29 @@ export default function Desktop() {
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   };
 
+  useEffect(() => {
+    const reposition = () => {
+      const sidebarWidth = sidebarOpen ? 256 : 64;
+      setWindows(prev => prev.map(w => {
+        if (w.isMaximized && !w.isMinimized) {
+          return {
+            ...w,
+            x: sidebarWidth,
+            y: 0,
+            width: window.innerWidth - sidebarWidth,
+            height: window.innerHeight,
+          };
+        }
+        const c = clampWindowToViewport(w.x, w.y, w.width, w.height, sidebarWidth);
+        if (c.x === w.x && c.y === w.y && c.width === w.width && c.height === w.height) return w;
+        return { ...w, x: c.x, y: c.y, width: c.width, height: c.height };
+      }));
+    };
+    reposition();
+    window.addEventListener('resize', reposition);
+    return () => window.removeEventListener('resize', reposition);
+  }, [sidebarOpen]);
+
   const computeGridLayout = (slotsNeeded: number = 1) => {
     const sidebarWidth = sidebarOpen ? 256 : 64;
     const TOP_RESERVE = 20;
@@ -286,9 +333,23 @@ export default function Desktop() {
   };
 
   const restoreWindow = (id: string) => {
-    setWindows(windows.map(w =>
-      w.id === id ? { ...w, isMinimized: false, zIndex: highestZIndex + 1 } : w
-    ));
+    const sidebarWidth = sidebarOpen ? 256 : 64;
+    setWindows(windows.map(w => {
+      if (w.id !== id) return w;
+      if (w.isMaximized) {
+        return {
+          ...w,
+          isMinimized: false,
+          zIndex: highestZIndex + 1,
+          x: sidebarWidth,
+          y: 0,
+          width: window.innerWidth - sidebarWidth,
+          height: window.innerHeight,
+        };
+      }
+      const c = clampWindowToViewport(w.x, w.y, w.width, w.height, sidebarWidth);
+      return { ...w, isMinimized: false, zIndex: highestZIndex + 1, x: c.x, y: c.y, width: c.width, height: c.height };
+    }));
     setHighestZIndex(highestZIndex + 1);
   };
 
@@ -303,13 +364,19 @@ export default function Desktop() {
     setWindows(windows.map(w => {
       if (w.id === id) {
         if (w.isMaximized) {
+          const sidebarWidth = sidebarOpen ? 256 : 64;
+          const px = w.previousState?.x ?? w.x;
+          const py = w.previousState?.y ?? w.y;
+          const pw = w.previousState?.width ?? 800;
+          const ph = w.previousState?.height ?? 500;
+          const c = clampWindowToViewport(px, py, pw, ph, sidebarWidth);
           return {
             ...w,
             isMaximized: false,
-            x: w.previousState?.x || w.x,
-            y: w.previousState?.y || w.y,
-            width: w.previousState?.width || 800,
-            height: w.previousState?.height || 500,
+            x: c.x,
+            y: c.y,
+            width: c.width,
+            height: c.height,
           };
         } else {
           const sidebarWidth = sidebarOpen ? 256 : 64;
@@ -473,6 +540,7 @@ export default function Desktop() {
             setWindows={setWindows}
             windows={windows}
             onContextMenu={handleContextMenu}
+            sidebarOpen={sidebarOpen}
           />
         ))}
 
@@ -614,9 +682,11 @@ interface WindowProps {
   setWindows: (windows: WindowState[]) => void;
   windows: WindowState[];
   onContextMenu: (e: React.MouseEvent, windowId: string) => void;
+  sidebarOpen: boolean;
 }
 
-function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWindows, windows, onContextMenu }: WindowProps) {
+function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWindows, windows, onContextMenu, sidebarOpen }: WindowProps) {
+  const sidebarWidth = sidebarOpen ? 256 : 64;
   const [isResizing, setIsResizing] = useState(false);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const GRID_SIZE = 20;
@@ -643,11 +713,12 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
         const deltaX = e.clientX - resizeStart.x;
         const deltaY = e.clientY - resizeStart.y;
 
-        const newWidth = snapToGrid(Math.max(400, resizeStart.width + deltaX));
-        const newHeight = snapToGrid(Math.max(300, resizeStart.height + deltaY));
+        const proposedWidth = snapToGrid(Math.max(400, resizeStart.width + deltaX));
+        const proposedHeight = snapToGrid(Math.max(300, resizeStart.height + deltaY));
+        const c = clampWindowToViewport(window.x, window.y, proposedWidth, proposedHeight, sidebarWidth);
 
         setWindows(windows.map(w =>
-          w.id === window.id ? { ...w, width: newWidth, height: newHeight } : w
+          w.id === window.id ? { ...w, width: c.width, height: c.height, x: c.x, y: c.y } : w
         ));
       }
     };
@@ -695,10 +766,11 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
       }}
       onDragEnd={(event, info) => {
         if (!window.isMaximized) {
-          const newX = snapToGrid(window.x + info.offset.x);
-          const newY = snapToGrid(window.y + info.offset.y);
+          const rawX = snapToGrid(window.x + info.offset.x);
+          const rawY = snapToGrid(window.y + info.offset.y);
+          const c = clampWindowToViewport(rawX, rawY, window.width, window.height, sidebarWidth);
           setWindows(windows.map(w =>
-            w.id === window.id ? { ...w, x: newX, y: newY } : w
+            w.id === window.id ? { ...w, x: c.x, y: c.y, width: c.width, height: c.height } : w
           ));
         }
       }}
