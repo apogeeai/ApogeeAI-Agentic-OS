@@ -943,7 +943,7 @@ const RESIZE_CURSORS: Record<ResizeDir, string> = {
   se: 'nwse-resize',
 };
 
-const MIN_WIN_W = 320;
+const MIN_WIN_W = 600;
 const MIN_WIN_H = 200;
 const SPRING = { type: 'spring' as const, stiffness: 260, damping: 30, mass: 0.9 };
 
