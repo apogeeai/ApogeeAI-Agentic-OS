@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { motion, PanInfo, useMotionValue, animate } from 'framer-motion';
+import { motion, useMotionValue, animate } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle, CheckSquare, BarChart3, Gauge, Radar, TrendingDown, Film, Network, Briefcase } from 'lucide-react';
 import { WindowContent } from '@/components/windows/WindowContent';
 import { WindowErrorBoundary } from '@/components/windows/WindowErrorBoundary';
@@ -603,7 +603,6 @@ export default function Desktop() {
             onMaximize={maximizeWindow}
             bringToFront={bringToFront}
             setWindows={setWindows}
-            windows={windows}
             onContextMenu={handleContextMenu}
             sidebarOpen={sidebarOpen}
           />
@@ -745,7 +744,6 @@ interface WindowProps {
   onMaximize: (id: string) => void;
   bringToFront: (id: string) => void;
   setWindows: React.Dispatch<React.SetStateAction<WindowState[]>>;
-  windows: WindowState[];
   onContextMenu: (e: React.MouseEvent, windowId: string) => void;
   sidebarOpen: boolean;
 }
@@ -767,7 +765,7 @@ const MIN_WIN_W = 320;
 const MIN_WIN_H = 200;
 const SPRING = { type: 'spring' as const, stiffness: 260, damping: 30, mass: 0.9 };
 
-function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, setWindows, windows, onContextMenu, sidebarOpen }: WindowProps) {
+function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, setWindows, onContextMenu, sidebarOpen }: WindowProps) {
   const sidebarWidth = sidebarOpen ? 256 : 64;
 
   const x = useMotionValue(win.x);
@@ -777,6 +775,16 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
 
   const isGesturingRef = useRef(false);
   const didMountRef = useRef(false);
+  const gestureCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (gestureCleanupRef.current) {
+        gestureCleanupRef.current();
+        gestureCleanupRef.current = null;
+      }
+    };
+  }, []);
 
   // Sync motion values from props (skip while user is dragging/resizing).
   // First mount: snap without animation. Subsequent prop changes: smooth spring.
@@ -830,18 +838,23 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
       nextY = c.y;
       if (!raf) raf = requestAnimationFrame(flush);
     };
-    const onUp = () => {
+    const teardown = (commit: boolean) => {
       if (raf) cancelAnimationFrame(raf);
-      flush();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       isGesturingRef.current = false;
-      const fx = x.get();
-      const fy = y.get();
-      setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy } : w2));
+      gestureCleanupRef.current = null;
+      if (commit) {
+        flush();
+        const fx = x.get();
+        const fy = y.get();
+        setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy } : w2));
+      }
     };
+    const onUp = () => teardown(true);
+    gestureCleanupRef.current = () => teardown(false);
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
@@ -897,17 +910,22 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
       nx = newX; ny = newY; nw = newW; nh = newH;
       if (!raf) raf = requestAnimationFrame(flush);
     };
-    const onUp = () => {
+    const teardown = (commit: boolean) => {
       if (raf) cancelAnimationFrame(raf);
-      flush();
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       isGesturingRef.current = false;
-      const fx = x.get(), fy = y.get(), fw = width.get(), fh = height.get();
-      setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy, width: fw, height: fh } : w2));
+      gestureCleanupRef.current = null;
+      if (commit) {
+        flush();
+        const fx = x.get(), fy = y.get(), fw = width.get(), fh = height.get();
+        setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy, width: fw, height: fh } : w2));
+      }
     };
+    const onUp = () => teardown(true);
+    gestureCleanupRef.current = () => teardown(false);
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
