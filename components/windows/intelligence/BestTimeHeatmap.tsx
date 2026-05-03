@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { getHeatmap, PLATFORMS, TENANTS, TENANT_LABEL, DAY_LABELS, type Tenant, type Platform } from './mockData';
+import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import { PLATFORMS, TENANTS, TENANT_LABEL, DAY_LABELS, type Tenant, type Platform } from './mockData';
 
 function cellColor(v: number): string {
-  // green at high, red at low
   if (v < 25) return 'rgba(225,29,72,0.55)';
   if (v < 45) return 'rgba(245,158,11,0.55)';
   if (v < 65) return 'rgba(234,179,8,0.55)';
@@ -20,19 +20,21 @@ export function BestTimeHeatmap() {
   const [platform, setPlatform] = useState<Platform>('Instagram');
   const [selected, setSelected] = useState<{ d: number; h: number } | null>(null);
 
-  const matrix = useMemo(() => getHeatmap(tenant, platform), [tenant, platform]);
+  const { data } = useEndpoint<{ matrix: number[][]; backend: 'live' | 'fallback' }>(
+    `/api/intelligence/heatmap?tenant=${encodeURIComponent(tenant)}&platform=${encodeURIComponent(platform)}`,
+  );
+  const matrix = data?.matrix ?? [];
 
-  const schedule = (d: number, h: number) => {
-    setSelected({ d, h });
-  };
+  const schedule = (d: number, h: number) => setSelected({ d, h });
 
-  const confirmSchedule = () => {
+  const confirmSchedule = async () => {
     if (!selected) return;
-    // TODO: POST to scheduler:queue { tenant, platform, dayOfWeek, hour, slotISO }
-    toast({
-      title: 'Slot reserved',
-      description: `${TENANT_LABEL[tenant]} • ${platform} • ${DAY_LABELS[selected.d]} ${selected.h}:00`,
-    });
+    try {
+      await postJson('/api/intelligence/schedule', { tenant, platform, day: selected.d, hour: selected.h });
+      toast({ title: 'Slot reserved', description: `${TENANT_LABEL[tenant]} • ${platform} • ${DAY_LABELS[selected.d]} ${selected.h}:00` });
+    } catch {
+      toast({ title: 'Schedule failed', description: 'API error' });
+    }
     setSelected(null);
   };
 
@@ -41,22 +43,20 @@ export function BestTimeHeatmap() {
       <div className="flex items-center gap-2 mb-1">
         <Calendar className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Best-Time-To-Post Predictor</h2>
-        <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">Mock</span>
+        <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
+          {data?.backend === 'live' ? 'LIVE' : 'FALLBACK'}
+        </span>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <select
-          value={tenant}
+        <select value={tenant}
           onChange={(e) => { setTenant(e.target.value as Tenant); setSelected(null); }}
-          className="text-xs bg-white/60 border border-white/70 rounded px-2 py-1 text-gray-800"
-        >
+          className="text-xs bg-white/60 border border-white/70 rounded px-2 py-1 text-gray-800">
           {TENANTS.map((t) => <option key={t} value={t}>{TENANT_LABEL[t]}</option>)}
         </select>
-        <select
-          value={platform}
+        <select value={platform}
           onChange={(e) => { setPlatform(e.target.value as Platform); setSelected(null); }}
-          className="text-xs bg-white/60 border border-white/70 rounded px-2 py-1 text-gray-800"
-        >
+          className="text-xs bg-white/60 border border-white/70 rounded px-2 py-1 text-gray-800">
           {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>
@@ -74,13 +74,10 @@ export function BestTimeHeatmap() {
               {row.map((v, h) => {
                 const isSel = selected?.d === d && selected?.h === h;
                 return (
-                  <button
-                    key={h}
-                    onClick={() => schedule(d, h)}
+                  <button key={h} onClick={() => schedule(d, h)}
                     title={`${DAY_LABELS[d]} ${h}:00 — ${v} engagement`}
                     className={`w-5 h-5 m-px rounded-sm transition-transform hover:scale-125 hover:z-10 relative ${isSel ? 'ring-2 ring-blue-600 z-20' : ''}`}
-                    style={{ background: cellColor(v) }}
-                  />
+                    style={{ background: cellColor(v) }} />
                 );
               })}
             </div>
@@ -97,7 +94,7 @@ export function BestTimeHeatmap() {
         </div>
       </div>
 
-      {selected && (
+      {selected && matrix[selected.d] && (
         <div className="bg-blue-100/70 border border-blue-300 rounded-xl p-3 flex items-center gap-3">
           <div className="text-xs text-gray-800 flex-1">
             <div className="font-bold">{TENANT_LABEL[tenant]} • {platform}</div>

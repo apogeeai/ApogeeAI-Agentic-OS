@@ -2,8 +2,8 @@
 
 import { useToast } from '@/hooks/use-toast';
 import { Zap, ShoppingBag, Mail, Video, Headphones, Briefcase, Sparkles } from 'lucide-react';
+import { postJson } from '@/lib/useEndpoint';
 
-// TODO: wire to OpenClaw Gateway POST /briefs (port 18789 loopback) → c-suite.briefs Redis stream
 const ACTIONS = [
   { label: 'Drop 10 Etsy Calendars', sub: 'Tastemaker → marketplace-product-factory', tenant: 'digital_products', icon: ShoppingBag, color: 'from-orange-400 to-orange-600' },
   { label: '5 Cold-Outreach Campaigns', sub: 'localbiz-growth-engine → email nurture', tenant: 'localbiz', icon: Mail, color: 'from-emerald-400 to-emerald-600' },
@@ -16,12 +16,19 @@ const ACTIONS = [
 export function MakeMoneyButtons() {
   const { toast } = useToast();
 
-  const fire = (label: string, tenant: string) => {
-    // TODO: POST { action: label, tenant } to OpenClaw Gateway → c-suite.briefs
-    toast({
-      title: `Brief queued: ${label}`,
-      description: `tenant:${tenant}:briefs`,
-    });
+  const fire = async (label: string, tenant: string) => {
+    try {
+      const res = await postJson<{ ok: boolean; backend?: string; id?: string }>(
+        '/api/c-suite-brief',
+        { text: label, tenant },
+      );
+      toast({
+        title: `Brief queued: ${label}`,
+        description: `tenant:${tenant}:briefs${res.backend === 'fallback' ? ' (mock)' : ''}`,
+      });
+    } catch {
+      toast({ title: 'Brief failed', description: 'API error' });
+    }
   };
 
   return (
@@ -40,11 +47,8 @@ export function MakeMoneyButtons() {
         {ACTIONS.map((a) => {
           const Icon = a.icon;
           return (
-            <button
-              key={a.label}
-              onClick={() => fire(a.label, a.tenant)}
-              className={`group relative overflow-hidden rounded-xl border border-white/60 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]`}
-            >
+            <button key={a.label} onClick={() => fire(a.label, a.tenant)}
+              className="group relative overflow-hidden rounded-xl border border-white/60 p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98]">
               <div className={`absolute inset-0 bg-gradient-to-br ${a.color} opacity-80 group-hover:opacity-100 transition-opacity`} />
               <div className="relative">
                 <Icon className="w-6 h-6 text-white mb-2 drop-shadow" />

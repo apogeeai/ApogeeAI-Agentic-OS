@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import { Radar, ArrowUp, ArrowDown, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { TREND_SIGNALS, type TrendSignal } from './mockData';
+import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import type { TrendSignal } from './mockData';
 
 type SortKey = 'name' | 'source' | 'peakInDays' | 'confidence' | 'expectedRevenue';
 
@@ -18,37 +19,44 @@ const SOURCE_COLOR: Record<string, string> = {
 
 export function TrendRadar() {
   const { toast } = useToast();
+  const { data } = useEndpoint<{ signals: TrendSignal[]; backend: 'live' | 'fallback' }>(
+    '/api/intelligence/trends',
+    { intervalMs: 30_000 },
+  );
+  const signals = data?.signals ?? [];
   const [sortKey, setSortKey] = useState<SortKey>('confidence');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [ridden, setRidden] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => {
-    const arr = [...TREND_SIGNALS];
+    const arr = [...signals];
     arr.sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
+      const av = a[sortKey] as number | string;
+      const bv = b[sortKey] as number | string;
       if (typeof av === 'number' && typeof bv === 'number') return sortDir === 'asc' ? av - bv : bv - av;
       return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
     return arr;
-  }, [sortKey, sortDir]);
+  }, [signals, sortKey, sortDir]);
 
   const toggleSort = (k: SortKey) => {
     if (k === sortKey) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     else { setSortKey(k); setSortDir(k === 'name' || k === 'source' ? 'asc' : 'desc'); }
   };
 
-  const ride = (s: TrendSignal) => {
-    // TODO: POST to gateway → spawn TrendScout ride-task on best-fit tenant
+  const ride = async (s: TrendSignal) => {
     setRidden((prev) => new Set(prev).add(s.id));
-    toast({ title: `Riding: ${s.name}`, description: `Spawned ride-task • ETA peak ${s.peakInDays}d` });
+    try {
+      await postJson('/api/intelligence/trends', { id: s.id });
+      toast({ title: `Riding: ${s.name}`, description: `Spawned ride-task • ETA peak ${s.peakInDays}d` });
+    } catch {
+      toast({ title: 'Ride failed', description: 'API error' });
+    }
   };
 
   const Th = ({ k, label, align }: { k: SortKey; label: string; align?: 'right' | 'left' }) => (
-    <th
-      onClick={() => toggleSort(k)}
-      className={`cursor-pointer select-none px-2 py-1.5 text-[10px] uppercase tracking-wider text-gray-600 hover:text-gray-900 ${align === 'right' ? 'text-right' : 'text-left'}`}
-    >
+    <th onClick={() => toggleSort(k)}
+      className={`cursor-pointer select-none px-2 py-1.5 text-[10px] uppercase tracking-wider text-gray-600 hover:text-gray-900 ${align === 'right' ? 'text-right' : 'text-left'}`}>
       <span className="inline-flex items-center gap-1">
         {label}
         {sortKey === k && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
@@ -62,7 +70,7 @@ export function TrendRadar() {
         <Radar className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Trend Radar</h2>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
-          TrendScout • {TREND_SIGNALS.length} signals • Mock
+          TrendScout · {signals.length} signals · {data?.backend === 'live' ? 'LIVE' : 'FALLBACK'}
         </span>
       </div>
 
@@ -97,11 +105,8 @@ export function TrendRadar() {
                   </td>
                   <td className="px-2 py-1.5 text-right font-mono text-gray-900">${s.expectedRevenue.toLocaleString()}</td>
                   <td className="px-2 py-1.5 text-right">
-                    <button
-                      disabled={isRidden}
-                      onClick={() => ride(s)}
-                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded bg-emerald-500/90 text-white hover:bg-emerald-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
+                    <button disabled={isRidden} onClick={() => ride(s)}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded bg-emerald-500/90 text-white hover:bg-emerald-600 disabled:bg-gray-400 disabled:cursor-not-allowed">
                       <Zap className="w-3 h-3" /> {isRidden ? 'Riding' : 'Ride it'}
                     </button>
                   </td>

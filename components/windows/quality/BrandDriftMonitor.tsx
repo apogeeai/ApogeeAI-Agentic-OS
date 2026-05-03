@@ -1,7 +1,15 @@
 "use client";
 
 import { Gauge, AlertTriangle } from 'lucide-react';
-import { DRIFT, TENANT_LABEL } from './mockData';
+import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_LABEL, type Tenant } from './mockData';
+
+interface DriftItem {
+  tenant: Tenant;
+  similarity: number;
+  threshold: number;
+  recentDrifted: { title: string; sim: number }[];
+}
 
 function ArcGauge({ value, threshold }: { value: number; threshold: number }) {
   const pct = Math.max(0, Math.min(1, value));
@@ -22,14 +30,7 @@ function ArcGauge({ value, threshold }: { value: number; threshold: number }) {
   return (
     <svg viewBox="0 0 100 70" className="w-full h-20">
       <path d={`M ${sx} ${sy} A ${r} ${r} 0 ${largeArc} 1 ${ex} ${ey}`} stroke="rgba(0,0,0,0.1)" strokeWidth="6" fill="none" strokeLinecap="round" />
-      <path
-        d={`M ${sx} ${sy} A ${r} ${r} 0 0 1 ${vx} ${vy}`}
-        stroke={color}
-        strokeWidth="6"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* threshold tick */}
+      <path d={`M ${sx} ${sy} A ${r} ${r} 0 0 1 ${vx} ${vy}`} stroke={color} strokeWidth="6" fill="none" strokeLinecap="round" />
       {(() => {
         const ta = startAngle + sweep * threshold;
         const [tx1, ty1] = polar(ta);
@@ -46,7 +47,12 @@ function ArcGauge({ value, threshold }: { value: number; threshold: number }) {
 }
 
 export function BrandDriftMonitor() {
-  const drifted = DRIFT.filter((d) => d.similarity < d.threshold);
+  const { data } = useEndpoint<{ drift: DriftItem[]; backend: 'live' | 'fallback' }>(
+    '/api/quality/drift',
+    { intervalMs: 60_000 },
+  );
+  const drift = data?.drift ?? [];
+  const drifted = drift.filter((d) => d.similarity < d.threshold);
 
   return (
     <div className="space-y-4">
@@ -54,7 +60,7 @@ export function BrandDriftMonitor() {
         <Gauge className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Brand Voice Drift Monitor</h2>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
-          last 50 outputs • Mock
+          last 50 outputs · {data?.backend === 'live' ? 'LIVE' : 'FALLBACK'}
         </span>
       </div>
 
@@ -67,7 +73,7 @@ export function BrandDriftMonitor() {
       )}
 
       <div className="grid grid-cols-3 gap-3">
-        {DRIFT.map((d) => {
+        {drift.map((d) => {
           const isDrifting = d.similarity < d.threshold;
           return (
             <div key={d.tenant} className={`bg-white/40 backdrop-blur-sm rounded-xl border p-3 ${isDrifting ? 'border-rose-400' : 'border-white/60'}`}>
@@ -89,9 +95,7 @@ export function BrandDriftMonitor() {
       <div className="bg-white/40 backdrop-blur-sm rounded-xl border border-white/60 p-3">
         <div className="text-xs font-semibold text-gray-700 mb-2">Most-Drifted Recent Outputs</div>
         <div className="space-y-2">
-          {DRIFT.flatMap((d) =>
-            d.recentDrifted.map((r) => ({ ...r, tenant: d.tenant }))
-          )
+          {drift.flatMap((d) => d.recentDrifted.map((r) => ({ ...r, tenant: d.tenant })))
             .sort((a, b) => a.sim - b.sim)
             .slice(0, 3)
             .map((r, i) => (
@@ -106,10 +110,6 @@ export function BrandDriftMonitor() {
               </div>
             ))}
         </div>
-      </div>
-
-      <div className="text-[10px] text-gray-600 italic">
-        TODO: cosine similarity vs brand_corpus embeddings (text-embedding-3-small) per tenant.
       </div>
     </div>
   );

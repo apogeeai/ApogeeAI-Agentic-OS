@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Film, Play, Loader2, Check, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useEndpoint, postJson } from '@/lib/useEndpoint';
 
 type JobStatus = 'pending' | 'running' | 'done';
 
@@ -18,46 +19,6 @@ interface Job {
   frames: string[];
 }
 
-const FRAME_BASES = [
-  'https://images.pexels.com/photos/1366919/pexels-photo-1366919.jpeg?auto=compress&cs=tinysrgb&w=400',
-  'https://images.pexels.com/photos/1252890/pexels-photo-1252890.jpeg?auto=compress&cs=tinysrgb&w=400',
-  'https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg?auto=compress&cs=tinysrgb&w=400',
-  'https://images.pexels.com/photos/1939485/pexels-photo-1939485.jpeg?auto=compress&cs=tinysrgb&w=400',
-];
-
-const INITIAL_JOBS: Job[] = [
-  {
-    id: 'j1', title: 'Persona V6 — neon walk', tenant: 'Digital Influencer', status: 'done', duration: '4.8s',
-    before: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=800',
-    after: 'https://images.pexels.com/photos/2787341/pexels-photo-2787341.jpeg?auto=compress&cs=tinysrgb&w=800',
-    frames: Array.from({ length: 8 }).map((_, i) => `${FRAME_BASES[i % FRAME_BASES.length]}&v=${i}`),
-  },
-  {
-    id: 'j2', title: 'Album cover — slow zoom', tenant: 'Synaptive Sounds', status: 'done', duration: '6.1s',
-    before: 'https://images.pexels.com/photos/164938/pexels-photo-164938.jpeg?auto=compress&cs=tinysrgb&w=800',
-    after: 'https://images.pexels.com/photos/1644888/pexels-photo-1644888.jpeg?auto=compress&cs=tinysrgb&w=800',
-    frames: Array.from({ length: 8 }).map((_, i) => `${FRAME_BASES[(i + 1) % FRAME_BASES.length]}&v=a${i}`),
-  },
-  {
-    id: 'j3', title: 'Etsy listing — orbit cam', tenant: 'Digital Products', status: 'running', progress: 62,
-    before: 'https://images.pexels.com/photos/1983032/pexels-photo-1983032.jpeg?auto=compress&cs=tinysrgb&w=800',
-    after: 'https://images.pexels.com/photos/4348078/pexels-photo-4348078.jpeg?auto=compress&cs=tinysrgb&w=800',
-    frames: [],
-  },
-  {
-    id: 'j4', title: 'Ad cutdown — push-in', tenant: 'LocalBiz', status: 'pending',
-    before: 'https://images.pexels.com/photos/1308881/pexels-photo-1308881.jpeg?auto=compress&cs=tinysrgb&w=800',
-    after: 'https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg?auto=compress&cs=tinysrgb&w=800',
-    frames: [],
-  },
-  {
-    id: 'j5', title: 'Reel — handheld parallax', tenant: 'Digital Influencer', status: 'pending',
-    before: 'https://images.pexels.com/photos/1499327/pexels-photo-1499327.jpeg?auto=compress&cs=tinysrgb&w=800',
-    after: 'https://images.pexels.com/photos/2613260/pexels-photo-2613260.jpeg?auto=compress&cs=tinysrgb&w=800',
-    frames: [],
-  },
-];
-
 const STATUS_BADGE: Record<JobStatus, string> = {
   pending: 'bg-gray-500/80',
   running: 'bg-blue-500/80',
@@ -70,47 +31,43 @@ function BeforeAfter({ before, after }: { before: string; after: string }) {
     <div>
       <div className="relative w-full aspect-video rounded-lg overflow-hidden border border-white/60 select-none">
         <img src={before} alt="before" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
-        <img
-          src={after}
-          alt="after"
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ clipPath: `inset(0 0 0 ${pos}%)` }}
-          draggable={false}
-        />
+        <img src={after} alt="after" className="absolute inset-0 w-full h-full object-cover"
+          style={{ clipPath: `inset(0 0 0 ${pos}%)` }} draggable={false} />
         <div className="absolute top-0 bottom-0 w-0.5 bg-white shadow-md" style={{ left: `${pos}%` }} />
         <div className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">BEFORE</div>
         <div className="absolute top-2 right-2 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">AFTER</div>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        value={pos}
-        onChange={(e) => setPos(Number(e.target.value))}
-        className="w-full mt-2 accent-emerald-600"
-      />
+      <input type="range" min={0} max={100} value={pos}
+        onChange={(e) => setPos(Number(e.target.value))} className="w-full mt-2 accent-emerald-600" />
     </div>
   );
 }
 
 export function VideoMotionLab() {
   const { toast } = useToast();
-  const [jobs, setJobs] = useState<Job[]>(INITIAL_JOBS);
+  const { data, refresh } = useEndpoint<{ jobs: Job[]; backend: 'live' | 'fallback' }>(
+    '/api/video/jobs',
+    { intervalMs: 5000 },
+  );
+  const jobs = data?.jobs ?? [];
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['j1']));
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
-  const regenerate = (j: Job) => {
-    // TODO: POST to ltx2/regenerate { jobId, motion_only: true }
-    setJobs((prev) => prev.map((x) => x.id === j.id ? { ...x, status: 'running', progress: 0 } : x));
+  const regenerate = async (j: Job) => {
     toast({ title: 'Regenerating motion', description: `${j.title} • motion-only pass` });
+    try {
+      await postJson('/api/video/regenerate', { jobId: j.id });
+      refresh();
+    } catch {
+      toast({ title: 'Regenerate failed', description: 'API error' });
+    }
   };
 
   const counts = {
@@ -124,7 +81,9 @@ export function VideoMotionLab() {
       <div className="flex items-center gap-2 mb-1">
         <Film className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Video Motion Lab</h2>
-        <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">LTX2 / Wan • Mock</span>
+        <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
+          LTX2 / Wan · {data?.backend === 'live' ? 'LIVE' : 'FALLBACK'}
+        </span>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -142,10 +101,7 @@ export function VideoMotionLab() {
           const StatusIcon = j.status === 'done' ? Check : j.status === 'running' ? Loader2 : Play;
           return (
             <div key={j.id} className="bg-white/40 backdrop-blur-sm rounded-xl border border-white/60 overflow-hidden">
-              <button
-                onClick={() => toggle(j.id)}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/40 text-left"
-              >
+              <button onClick={() => toggle(j.id)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/40 text-left">
                 {isOpen ? <ChevronDown className="w-4 h-4 text-gray-700" /> : <ChevronRight className="w-4 h-4 text-gray-700" />}
                 <span className={`inline-flex items-center gap-1 text-[10px] font-bold text-white px-1.5 py-0.5 rounded ${STATUS_BADGE[j.status]}`}>
                   <StatusIcon className={`w-3 h-3 ${j.status === 'running' ? 'animate-spin' : ''}`} />
@@ -180,10 +136,8 @@ export function VideoMotionLab() {
                         </div>
                       </div>
                       <BeforeAfter before={j.before} after={j.after} />
-                      <button
-                        onClick={() => regenerate(j)}
-                        className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded bg-violet-600 text-white hover:bg-violet-700"
-                      >
+                      <button onClick={() => regenerate(j)}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded bg-violet-600 text-white hover:bg-violet-700">
                         <RefreshCw className="w-3 h-3" /> Regenerate motion only
                       </button>
                     </>

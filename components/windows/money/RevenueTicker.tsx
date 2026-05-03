@@ -3,16 +3,17 @@
 import { useEffect, useState } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
+import { useEndpoint } from '@/lib/useEndpoint';
 
-// TODO: wire to Redis stream `cost-profit-ledger` skill / tenant:*:revenue keys
-const TENANTS = [
-  { id: 'synaptive', name: 'Synaptive Sounds', mrr: 1240 },
-  { id: 'digital_influencer', name: 'Digital Influencer', mrr: 3420 },
-  { id: 'digital_products', name: 'Digital Products', mrr: 2180 },
-  { id: 'localbiz', name: 'LocalBiz Growth', mrr: 4850 },
-  { id: 'freelance', name: 'Freelance Empire', mrr: 1960 },
-  { id: 'apogee_dashboard', name: 'Apogee Dashboard', mrr: 890 },
-];
+interface Revenue {
+  totalMrr: number;
+  todayGross: number;
+  yesterdayGross: number;
+  weekGross: number;
+  monthGross: number;
+  perTenant: { id: string; name: string; mrr: number }[];
+  backend: 'live' | 'fallback';
+}
 
 function seedSpark(seed: number, points: number = 30) {
   const out: { day: number; value: number }[] = [];
@@ -25,11 +26,7 @@ function seedSpark(seed: number, points: number = 30) {
 }
 
 export function RevenueTicker() {
-  const totalMrr = TENANTS.reduce((a, t) => a + t.mrr, 0);
-  const todayGross = 487;
-  const yesterdayGross = 412;
-  const weekGross = 3120;
-  const monthGross = 14490;
+  const { data } = useEndpoint<Revenue>('/api/money/revenue', { intervalMs: 15_000 });
 
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -37,8 +34,13 @@ export function RevenueTicker() {
     return () => clearInterval(t);
   }, []);
 
+  if (!data) {
+    return <div className="text-xs text-gray-500 p-4">Loading revenue…</div>;
+  }
+
+  const { totalMrr, todayGross, yesterdayGross, weekGross, monthGross, perTenant } = data;
   const spark = seedSpark(tick, 30);
-  const dayDelta = ((todayGross - yesterdayGross) / yesterdayGross) * 100;
+  const dayDelta = yesterdayGross > 0 ? ((todayGross - yesterdayGross) / yesterdayGross) * 100 : 0;
 
   const Delta = ({ pct }: { pct: number }) => (
     <span className={`inline-flex items-center gap-1 text-xs font-semibold ${pct >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
@@ -52,7 +54,9 @@ export function RevenueTicker() {
       <div className="flex items-center gap-2 mb-2">
         <Activity className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Live Revenue Ticker</h2>
-        <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">Mock data</span>
+        <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
+          {data.backend === 'live' ? 'LIVE' : 'FALLBACK'}
+        </span>
       </div>
 
       <div className="bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 backdrop-blur-sm rounded-xl p-5 border border-white/60">
@@ -71,10 +75,8 @@ export function RevenueTicker() {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={spark}>
               <XAxis dataKey="day" hide />
-              <Tooltip
-                contentStyle={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: 8, fontSize: 11 }}
-                formatter={(v: number | string) => [`$${v}`, 'Revenue']}
-              />
+              <Tooltip contentStyle={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: 8, fontSize: 11 }}
+                formatter={(v: number | string) => [`$${v}`, 'Revenue']} />
               <Line type="monotone" dataKey="value" stroke="#047857" strokeWidth={2.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -104,8 +106,8 @@ export function RevenueTicker() {
           <DollarSign className="w-3 h-3" /> Per-Tenant MRR
         </div>
         <div className="space-y-1.5">
-          {TENANTS.map((t) => {
-            const pct = (t.mrr / totalMrr) * 100;
+          {perTenant.map((t) => {
+            const pct = totalMrr > 0 ? (t.mrr / totalMrr) * 100 : 0;
             return (
               <div key={t.id} className="flex items-center gap-2 text-xs">
                 <div className="w-32 text-gray-700 truncate">{t.name}</div>

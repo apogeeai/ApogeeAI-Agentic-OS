@@ -1,63 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, X } from 'lucide-react';
+import { useEndpoint } from '@/lib/useEndpoint';
 
 type AgentStatus = 'idle' | 'working' | 'errored' | 'offline';
-
-interface Agent {
-  name: string;
-  tier: 'core' | 'sub';
-  role: string;
-  status: AgentStatus;
-}
-
-const CORE_AGENTS: Omit<Agent, 'status'>[] = [
-  { name: 'DIRECTOR', tier: 'core', role: 'Routes & decomposes' },
-  { name: 'MAKER', tier: 'core', role: 'Creative production' },
-  { name: 'BUILDER', tier: 'core', role: 'Code & infra' },
-  { name: 'SELLER', tier: 'core', role: 'Distribution' },
-  { name: 'OPS', tier: 'core', role: 'Daily operations' },
-  { name: 'WIGGUM', tier: 'core', role: 'Brand/compliance gate' },
-  { name: 'SKILL_REVIEWER', tier: 'core', role: 'Skill bundle review' },
-];
-
-const SUB_AGENTS: Omit<Agent, 'status'>[] = [
-  { name: 'gsd_runner', tier: 'sub', role: 'CEO.Decomposer' },
-  { name: 'claudia', tier: 'sub', role: 'Owner briefing' },
-  { name: 'trendscout', tier: 'sub', role: 'Trend research' },
-  { name: 'creative', tier: 'sub', role: 'Brief authoring' },
-  { name: 'tastemaker', tier: 'sub', role: 'Quality scoring' },
-  { name: 'designer', tier: 'sub', role: 'ComfyUI assets' },
-  { name: 'audio', tier: 'sub', role: '8D / binaural' },
-  { name: 'editor', tier: 'sub', role: 'Video assembly' },
-  { name: 'twitter_analyst', tier: 'sub', role: 'X content analysis' },
-  { name: 'community', tier: 'sub', role: 'Community ops' },
-  { name: 'rss_brief_agent', tier: 'sub', role: 'RSS monitoring' },
-  { name: 'prospector', tier: 'sub', role: 'Lead sourcing' },
-  { name: 'outreach_writer', tier: 'sub', role: 'Cold outreach' },
-  { name: 'retention_agent', tier: 'sub', role: 'Churn save' },
-];
-
-function mulberry32(a: number) {
-  return function () {
-    let t = (a += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const STATUSES: AgentStatus[] = ['idle', 'working', 'working', 'idle', 'errored', 'offline', 'working'];
-
-function seedAgents(): Agent[] {
-  const rnd = mulberry32(42);
-  return [...CORE_AGENTS, ...SUB_AGENTS].map((a) => ({
-    ...a,
-    status: STATUSES[Math.floor(rnd() * STATUSES.length)],
-  }));
-}
+interface Agent { name: string; tier: 'core' | 'sub'; role: string; status: AgentStatus }
 
 const STATUS_STYLES: Record<AgentStatus, { dot: string; ring: string; label: string; pulse: boolean }> = {
   idle: { dot: 'bg-emerald-400', ring: 'ring-emerald-300/50', label: 'Idle', pulse: false },
@@ -66,39 +15,21 @@ const STATUS_STYLES: Record<AgentStatus, { dot: string; ring: string; label: str
   offline: { dot: 'bg-slate-400', ring: 'ring-slate-300/40', label: 'Offline', pulse: false },
 };
 
-function makeLogs(name: string, status: AgentStatus): string[] {
-  const rnd = mulberry32(name.length * 17 + status.length);
-  const verbs = ['claimed task', 'emitted KPI', 'scored 78', 'pushed draft', 'requested LLM', 'spawned subtask', 'wrote memory', 'ack brief', 'heartbeat'];
-  const out: string[] = [];
-  for (let i = 0; i < 50; i++) {
-    const t = new Date(Date.now() - i * 1000 * 47).toISOString().slice(11, 19);
-    const v = verbs[Math.floor(rnd() * verbs.length)];
-    const id = Math.floor(rnd() * 9999).toString().padStart(4, '0');
-    out.push(`[${t}] ${name} ${v} task#${id}`);
-  }
-  if (status === 'errored') out.unshift(`[${new Date().toISOString().slice(11, 19)}] ${name} ERROR redis: connection reset`);
-  return out;
-}
-
 export function AgentSwarmGrid() {
-  const [agents, setAgents] = useState<Agent[]>(() => seedAgents());
+  const { data } = useEndpoint<{ agents: Agent[]; backend: 'live' | 'fallback' }>(
+    '/api/agents/swarm',
+    { intervalMs: 2500 },
+  );
+  const agents = data?.agents ?? [];
+  const isLive = data?.backend === 'live';
+
   const [selected, setSelected] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setAgents((prev) => {
-        const next = [...prev];
-        const i = Math.floor(Math.random() * next.length);
-        const opts: AgentStatus[] = ['idle', 'working', 'working', 'errored', 'offline'];
-        next[i] = { ...next[i], status: opts[Math.floor(Math.random() * opts.length)] };
-        return next;
-      });
-    }, 2500);
-    return () => clearInterval(id);
-  }, []);
-
   const selectedAgent = useMemo(() => agents.find((a) => a.name === selected) || null, [agents, selected]);
-  const logs = useMemo(() => (selectedAgent ? makeLogs(selectedAgent.name, selectedAgent.status) : []), [selectedAgent]);
+  const { data: logsData } = useEndpoint<{ lines: string[] }>(
+    selected ? `/api/agents/${encodeURIComponent(selected)}/logs` : null,
+    { intervalMs: 5000 },
+  );
+  const logs = logsData?.lines ?? [];
 
   const counts = useMemo(() => {
     const c: Record<AgentStatus, number> = { idle: 0, working: 0, errored: 0, offline: 0 };
@@ -114,6 +45,9 @@ export function AgentSwarmGrid() {
           <p className="text-xs text-gray-600">7 core agents · 14 sub-agents · live status</p>
         </div>
         <div className="flex items-center gap-2 text-xs">
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isLive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+            {isLive ? 'LIVE' : 'FALLBACK'}
+          </span>
           {(Object.keys(counts) as AgentStatus[]).map((k) => (
             <span key={k} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/40 backdrop-blur-xl border border-white/60">
               <span className={`w-2 h-2 rounded-full ${STATUS_STYLES[k].dot}`} />

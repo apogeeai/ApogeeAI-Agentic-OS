@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { TrendingDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { LEADS, type Lead } from './mockData';
+import { useEndpoint } from '@/lib/useEndpoint';
+import type { Lead } from './mockData';
 
 type SortKey = 'business' | 'industry' | 'convertPct' | 'churnPct' | 'mrr';
 
 function light(pct: number, kind: 'good' | 'bad') {
-  // good = high convert good, bad = high churn bad
   const high = kind === 'good' ? pct >= 60 : pct <= 15;
   const mid = kind === 'good' ? pct >= 35 : pct <= 35;
   if (high) return { bg: 'bg-emerald-500', text: 'text-emerald-50' };
@@ -16,11 +16,17 @@ function light(pct: number, kind: 'good' | 'bad') {
 }
 
 export function ChurnForecast() {
+  const { data } = useEndpoint<{ leads: Lead[]; backend: 'live' | 'fallback' }>(
+    '/api/intelligence/leads',
+    { intervalMs: 60_000 },
+  );
+  const leads = data?.leads ?? [];
+
   const [sortKey, setSortKey] = useState<SortKey>('convertPct');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   const sorted = useMemo(() => {
-    const arr = [...LEADS];
+    const arr = [...leads];
     arr.sort((a, b) => {
       const av = a[sortKey] as number | string;
       const bv = b[sortKey] as number | string;
@@ -28,7 +34,7 @@ export function ChurnForecast() {
       return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
     return arr;
-  }, [sortKey, sortDir]);
+  }, [leads, sortKey, sortDir]);
 
   const toggle = (k: SortKey) => {
     if (k === sortKey) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -36,10 +42,8 @@ export function ChurnForecast() {
   };
 
   const Th = ({ k, label, align }: { k: SortKey; label: string; align?: 'right' }) => (
-    <th
-      onClick={() => toggle(k)}
-      className={`cursor-pointer select-none px-2 py-1.5 text-[10px] uppercase tracking-wider text-gray-600 hover:text-gray-900 ${align === 'right' ? 'text-right' : 'text-left'}`}
-    >
+    <th onClick={() => toggle(k)}
+      className={`cursor-pointer select-none px-2 py-1.5 text-[10px] uppercase tracking-wider text-gray-600 hover:text-gray-900 ${align === 'right' ? 'text-right' : 'text-left'}`}>
       <span className="inline-flex items-center gap-1">
         {label}
         {sortKey === k && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
@@ -56,7 +60,7 @@ export function ChurnForecast() {
         <TrendingDown className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Churn / Lead-Quality Forecast</h2>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
-          LocalBiz • next 14d • Mock
+          LocalBiz · next 14d · {data?.backend === 'live' ? 'LIVE' : 'FALLBACK'}
         </span>
       </div>
 
@@ -112,10 +116,6 @@ export function ChurnForecast() {
             })}
           </tbody>
         </table>
-      </div>
-
-      <div className="text-[10px] text-gray-600 italic">
-        TODO: replace mock with leads:scoring:* (xgboost) + 14d cohort decay model.
       </div>
     </div>
   );

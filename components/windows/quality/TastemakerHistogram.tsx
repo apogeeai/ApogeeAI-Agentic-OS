@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import * as Slider from '@radix-ui/react-slider';
 import { BarChart3 } from 'lucide-react';
-import { SCORES_24H, TENANT_LABEL, type Tenant } from './mockData';
+import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_LABEL, type Tenant } from './mockData';
 
 const TENANT_FILL: Record<Tenant, string> = {
   synaptive: '#a855f7',
@@ -18,26 +19,31 @@ const BUCKET_COUNT = 10;
 const DEFAULT_THRESHOLD = 70;
 
 export function TastemakerHistogram() {
+  const { data } = useEndpoint<{ scores: { tenant: Tenant; score: number }[]; backend: 'live' | 'fallback' }>(
+    '/api/quality/scores',
+    { intervalMs: 30_000 },
+  );
+  const scores = data?.scores ?? [];
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);
 
   const buckets = useMemo(() => {
     const arr: Record<Tenant, number>[] = Array.from({ length: BUCKET_COUNT }, () => ({
       synaptive: 0, digital_influencer: 0, digital_products: 0, localbiz: 0, freelance: 0, apogee_dashboard: 0,
     } as Record<Tenant, number>));
-    for (const { tenant, score } of SCORES_24H) {
+    for (const { tenant, score } of scores) {
       const idx = Math.min(BUCKET_COUNT - 1, Math.floor(score / (100 / BUCKET_COUNT)));
       arr[idx][tenant] += 1;
     }
     return arr;
-  }, []);
+  }, [scores]);
 
   const maxBucketTotal = useMemo(
-    () => Math.max(...buckets.map((b) => Object.values(b).reduce((a, n) => a + n, 0))),
+    () => Math.max(1, ...buckets.map((b) => Object.values(b).reduce((a, n) => a + n, 0))),
     [buckets]
   );
 
-  const wouldPublishDefault = SCORES_24H.filter((s) => s.score >= DEFAULT_THRESHOLD).length;
-  const wouldPublishNow = SCORES_24H.filter((s) => s.score >= threshold).length;
+  const wouldPublishDefault = scores.filter((s) => s.score >= DEFAULT_THRESHOLD).length;
+  const wouldPublishNow = scores.filter((s) => s.score >= threshold).length;
   const delta = wouldPublishNow - wouldPublishDefault;
 
   return (
@@ -46,7 +52,7 @@ export function TastemakerHistogram() {
         <BarChart3 className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Tastemaker Score Distribution</h2>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
-          {SCORES_24H.length} scores • last 24h • Mock
+          {scores.length} scores · last 24h · {data?.backend === 'live' ? 'LIVE' : 'FALLBACK'}
         </span>
       </div>
 
@@ -72,10 +78,7 @@ export function TastemakerHistogram() {
               );
             })}
           </div>
-          <div
-            className="absolute top-0 bottom-5 w-0.5 bg-rose-600 pointer-events-none"
-            style={{ left: `${threshold}%` }}
-          >
+          <div className="absolute top-0 bottom-5 w-0.5 bg-rose-600 pointer-events-none" style={{ left: `${threshold}%` }}>
             <div className="absolute -top-1 -translate-x-1/2 bg-rose-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
               {threshold}
             </div>
@@ -88,21 +91,15 @@ export function TastemakerHistogram() {
           <div className="text-xs font-semibold text-gray-700">Publish threshold: <span className="text-base text-gray-900">{threshold}</span></div>
           <button onClick={() => setThreshold(DEFAULT_THRESHOLD)} className="text-[10px] text-gray-600 underline hover:text-gray-800">reset</button>
         </div>
-        <Slider.Root
-          className="relative flex items-center select-none touch-none w-full h-5"
-          value={[threshold]}
-          onValueChange={(v) => setThreshold(v[0])}
-          min={0}
-          max={100}
-          step={1}
-        >
+        <Slider.Root className="relative flex items-center select-none touch-none w-full h-5"
+          value={[threshold]} onValueChange={(v) => setThreshold(v[0])} min={0} max={100} step={1}>
           <Slider.Track className="bg-white/60 relative grow rounded-full h-1.5">
             <Slider.Range className="absolute bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full h-full" />
           </Slider.Track>
           <Slider.Thumb className="block w-4 h-4 bg-white border-2 border-emerald-600 rounded-full shadow hover:scale-110 transition-transform" />
         </Slider.Root>
         <div className="mt-3 text-xs text-gray-700">
-          Would publish <strong>{wouldPublishNow}</strong> of {SCORES_24H.length} scores
+          Would publish <strong>{wouldPublishNow}</strong> of {scores.length} scores
           {delta !== 0 && (
             <span className={`ml-2 font-bold ${delta > 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
               ({delta > 0 ? '+' : ''}{delta} vs default)

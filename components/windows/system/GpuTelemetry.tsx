@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Cpu, Zap, Database, Layers } from 'lucide-react';
+import { useEndpoint } from '@/lib/useEndpoint';
 
 interface Metric {
   label: string;
@@ -16,47 +16,38 @@ function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
 
-function drift(prev: number, max: number, volatility = 0.08) {
-  const delta = (Math.random() - 0.5) * max * volatility;
-  return clamp(prev + delta, max * 0.05, max * 0.98);
-}
-
 export function GpuTelemetry() {
-  const [metrics, setMetrics] = useState<Metric[]>([
-    { label: 'Sage RTX 3090', sublabel: 'GPU utilisation', value: 64, max: 100, unit: '%', color: '#10b981' },
-    { label: 'Sage RTX 3090', sublabel: 'VRAM 24GB', value: 18.2, max: 24, unit: 'GB', color: '#0ea5e9' },
-    { label: 'Sage RTX 4090', sublabel: 'GPU utilisation', value: 81, max: 100, unit: '%', color: '#10b981' },
-    { label: 'Sage RTX 4090', sublabel: 'VRAM 24GB', value: 21.4, max: 24, unit: 'GB', color: '#0ea5e9' },
-    { label: 'vLLM :8000', sublabel: 'Queue depth', value: 3, max: 32, unit: '', color: '#8b5cf6' },
-    { label: 'vLLM :8001', sublabel: 'Queue depth', value: 7, max: 32, unit: '', color: '#8b5cf6' },
-    { label: 'Ollama', sublabel: 'Cache hit rate', value: 92, max: 100, unit: '%', color: '#f59e0b' },
-    { label: 'ComfyUI', sublabel: 'Throughput / min', value: 14, max: 40, unit: 'jobs', color: '#ec4899' },
-  ]);
+  const { data } = useEndpoint<{ metrics: Metric[]; backend: 'live' | 'fallback' }>(
+    '/api/gpu/telemetry',
+    { intervalMs: 2000 },
+  );
+  const metrics = data?.metrics ?? [];
+  const isLive = data?.backend === 'live';
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setMetrics((prev) => prev.map((m) => ({ ...m, value: Number(drift(m.value, m.max).toFixed(1)) })));
-    }, 2000);
-    return () => clearInterval(id);
-  }, []);
+  const m = (i: number) => metrics[i]?.value ?? 0;
 
   return (
     <div className="h-full flex flex-col text-gray-800">
-      <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-900">GPU / Model Telemetry</h2>
-        <p className="text-xs text-gray-600">Sage rig · vLLM · Ollama · ComfyUI · refreshed every 2s</p>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">GPU / Model Telemetry</h2>
+          <p className="text-xs text-gray-600">Sage rig · vLLM · Ollama · ComfyUI · refreshed every 2s</p>
+        </div>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isLive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+          {isLive ? 'LIVE' : 'FALLBACK'}
+        </span>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <SummaryTile icon={<Cpu className="w-4 h-4" />} label="GPUs online" value="2 / 2" tone="emerald" />
-        <SummaryTile icon={<Zap className="w-4 h-4" />} label="Total VRAM" value={`${(metrics[1].value + metrics[3].value).toFixed(1)} / 48 GB`} tone="sky" />
-        <SummaryTile icon={<Layers className="w-4 h-4" />} label="vLLM queue" value={`${(metrics[4].value + metrics[5].value).toFixed(0)} req`} tone="violet" />
-        <SummaryTile icon={<Database className="w-4 h-4" />} label="Ollama hit" value={`${metrics[6].value.toFixed(0)}%`} tone="amber" />
+        <SummaryTile icon={<Zap className="w-4 h-4" />} label="Total VRAM" value={`${(m(1) + m(3)).toFixed(1)} / 48 GB`} tone="sky" />
+        <SummaryTile icon={<Layers className="w-4 h-4" />} label="vLLM queue" value={`${(m(4) + m(5)).toFixed(0)} req`} tone="violet" />
+        <SummaryTile icon={<Database className="w-4 h-4" />} label="Ollama hit" value={`${m(6).toFixed(0)}%`} tone="amber" />
       </div>
 
       <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3 overflow-auto">
-        {metrics.map((m) => (
-          <Gauge key={`${m.label}-${m.sublabel}`} m={m} />
+        {metrics.map((g) => (
+          <Gauge key={`${g.label}-${g.sublabel}`} m={g} />
         ))}
       </div>
     </div>
@@ -86,12 +77,11 @@ function Gauge({ m }: { m: Metric }) {
   const r = 44;
   const c = 2 * Math.PI * r;
   const dash = c * pct;
-  const angle = -90;
 
   return (
     <div className="bg-white/40 backdrop-blur-xl border border-white/60 rounded-xl p-3 flex flex-col items-center justify-center">
       <div className="relative w-28 h-28">
-        <svg viewBox="0 0 120 120" className="w-full h-full -rotate-0">
+        <svg viewBox="0 0 120 120" className="w-full h-full">
           <circle cx="60" cy="60" r={r} stroke="rgba(15,23,42,0.08)" strokeWidth="10" fill="none" />
           <circle
             cx="60"
@@ -102,7 +92,7 @@ function Gauge({ m }: { m: Metric }) {
             fill="none"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${c - dash}`}
-            transform={`rotate(${angle} 60 60)`}
+            transform="rotate(-90 60 60)"
             style={{ transition: 'stroke-dasharray 1.6s ease-in-out' }}
           />
         </svg>

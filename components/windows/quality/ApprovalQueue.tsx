@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { CheckSquare, Check, X, Shield, ShieldAlert, ShieldX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { PENDING_ITEMS, TENANT_LABEL, TENANT_COLOR, type PendingItem } from './mockData';
+import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import { TENANT_LABEL, TENANT_COLOR, type PendingItem } from './mockData';
 
 const VERDICT_ICON = { pass: Shield, caution: ShieldAlert, flag: ShieldX };
 const VERDICT_COLOR = { pass: 'text-emerald-700', caution: 'text-amber-700', flag: 'text-rose-700' };
@@ -36,16 +37,12 @@ function Card({ item, onDecide, isTop }: { item: PendingItem; onDecide: (decisio
         <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-bold px-2 py-1 rounded">
           {item.tasteScore}/100
         </div>
-        <motion.div
-          style={{ opacity: approveOpacity }}
-          className="absolute top-4 left-4 border-4 border-emerald-500 text-emerald-500 px-3 py-1 rounded-lg text-2xl font-black -rotate-12"
-        >
+        <motion.div style={{ opacity: approveOpacity }}
+          className="absolute top-4 left-4 border-4 border-emerald-500 text-emerald-500 px-3 py-1 rounded-lg text-2xl font-black -rotate-12">
           PUBLISH
         </motion.div>
-        <motion.div
-          style={{ opacity: killOpacity }}
-          className="absolute top-4 right-4 border-4 border-rose-500 text-rose-500 px-3 py-1 rounded-lg text-2xl font-black rotate-12"
-        >
+        <motion.div style={{ opacity: killOpacity }}
+          className="absolute top-4 right-4 border-4 border-rose-500 text-rose-500 px-3 py-1 rounded-lg text-2xl font-black rotate-12">
           KILL
         </motion.div>
       </div>
@@ -62,28 +59,56 @@ function Card({ item, onDecide, isTop }: { item: PendingItem; onDecide: (decisio
 
 export function ApprovalQueue() {
   const { toast } = useToast();
-  const [queue, setQueue] = useState<PendingItem[]>(PENDING_ITEMS);
+  const { data } = useEndpoint<{ items: PendingItem[]; backend: 'live' | 'fallback' }>(
+    '/api/quality/approvals',
+    { intervalMs: 15_000 },
+  );
+  // Track items the operator has acted on locally so polling doesn't reintroduce them.
+  const [actedOn, setActedOn] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState({ approved: 0, killed: 0 });
 
+  const queue = useMemo(
+    () => (data?.items ?? []).filter((it) => !actedOn.has(it.id)),
+    [data, actedOn],
+  );
+
   const decide = useCallback((decision: 'approve' | 'kill') => {
-    setQueue((prev) => {
-      if (prev.length === 0) return prev;
-      const [head, ...rest] = prev;
-      // TODO: POST { id: head.id, decision } to gateway → tenant:<id>:approvals stream
-      // Defer toast + stats to a microtask so the state updater stays pure.
-      Promise.resolve().then(() => {
+    if (queue.length === 0) return;
+    const head = queue[0];
+    setActedOn((prev) => {
+      const next = new Set(prev);
+      next.add(head.id);
+      return next;
+    });
+    setStats((s) => ({
+      approved: s.approved + (decision === 'approve' ? 1 : 0),
+      killed: s.killed + (decision === 'kill' ? 1 : 0),
+    }));
+    Promise.resolve().then(async () => {
+      try {
+        await postJson('/api/quality/approvals', { id: head.id, decision, tenant: head.tenant });
         toast({
           title: decision === 'approve' ? `Approved: ${head.title}` : `Killed: ${head.title}`,
           description: TENANT_LABEL[head.tenant],
         });
+      } catch (e) {
+        // Roll the optimistic action back if the server rejected it.
+        setActedOn((prev) => {
+          const next = new Set(prev);
+          next.delete(head.id);
+          return next;
+        });
         setStats((s) => ({
-          approved: s.approved + (decision === 'approve' ? 1 : 0),
-          killed: s.killed + (decision === 'kill' ? 1 : 0),
+          approved: s.approved - (decision === 'approve' ? 1 : 0),
+          killed: s.killed - (decision === 'kill' ? 1 : 0),
         }));
-      });
-      return rest;
+        toast({
+          title: 'Decision failed — restored',
+          description: e instanceof Error ? e.message : 'Server error',
+        });
+      }
     });
-  }, [toast]);
+  }, [queue, toast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -105,7 +130,7 @@ export function ApprovalQueue() {
         <CheckSquare className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Approval Queue</h2>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
-          {queue.length} pending • ← kill / → publish • Mock
+          {queue.length} pending · ← kill / → publish · {data?.backend === 'live' ? 'LIVE' : 'FALLBACK'}
         </span>
       </div>
 
@@ -127,11 +152,8 @@ export function ApprovalQueue() {
       <div className="relative h-[420px] mx-auto max-w-sm">
         <AnimatePresence>
           {!top && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-white/60 backdrop-blur-xl border border-white/60 rounded-2xl flex flex-col items-center justify-center text-center p-6"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="absolute inset-0 bg-white/60 backdrop-blur-xl border border-white/60 rounded-2xl flex flex-col items-center justify-center text-center p-6">
               <CheckSquare className="w-12 h-12 text-emerald-600 mb-2" />
               <div className="text-base font-bold text-gray-900">Queue empty</div>
               <div className="text-xs text-gray-600 mt-1">All caught up. Nice work.</div>
@@ -144,18 +166,12 @@ export function ApprovalQueue() {
 
       {top && (
         <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => decide('kill')}
-            className="w-14 h-14 rounded-full bg-rose-500/90 text-white shadow-lg hover:scale-110 active:scale-95 transition-transform flex items-center justify-center"
-            aria-label="Kill"
-          >
+          <button onClick={() => decide('kill')}
+            className="w-14 h-14 rounded-full bg-rose-500/90 text-white shadow-lg hover:scale-110 active:scale-95 transition-transform flex items-center justify-center" aria-label="Kill">
             <X className="w-7 h-7" />
           </button>
-          <button
-            onClick={() => decide('approve')}
-            className="w-14 h-14 rounded-full bg-emerald-500/90 text-white shadow-lg hover:scale-110 active:scale-95 transition-transform flex items-center justify-center"
-            aria-label="Approve"
-          >
+          <button onClick={() => decide('approve')}
+            className="w-14 h-14 rounded-full bg-emerald-500/90 text-white shadow-lg hover:scale-110 active:scale-95 transition-transform flex items-center justify-center" aria-label="Approve">
             <Check className="w-7 h-7" />
           </button>
         </div>

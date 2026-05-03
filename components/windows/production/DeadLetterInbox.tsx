@@ -3,11 +3,23 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, RotateCw, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { DEAD_LETTER, TENANT_LABEL, TENANT_COLOR, type DeadLetterItem } from './mockData';
+import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import { TENANT_LABEL, TENANT_COLOR, type DeadLetterItem } from './mockData';
 
 export function DeadLetterInbox() {
   const { toast } = useToast();
-  const [items, setItems] = useState<DeadLetterItem[]>(DEAD_LETTER);
+  const { data } = useEndpoint<{ items: DeadLetterItem[]; backend: 'live' | 'fallback' }>(
+    '/api/production/dead-letter',
+    { intervalMs: 15_000 },
+  );
+  // Track operator actions locally so polled server state doesn't resurrect items
+  // that have already been retried/ignored.
+  const [actedOn, setActedOn] = useState<Set<string>>(new Set());
+
+  const items = useMemo(
+    () => (data?.items ?? []).filter((it) => !actedOn.has(it.id)),
+    [data, actedOn],
+  );
 
   const groups = useMemo(() => {
     const map = new Map<string, DeadLetterItem[]>();
@@ -19,15 +31,32 @@ export function DeadLetterInbox() {
     return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
   }, [items]);
 
-  const act = (id: string, decision: 'retry' | 'ignore') => {
+  const act = async (id: string, decision: 'retry' | 'ignore') => {
     const item = items.find((i) => i.id === id);
     if (!item) return;
-    // TODO: XADD pipeline:retry / XACK os:stream:dead with consumer group
-    toast({
-      title: decision === 'retry' ? `Retrying: ${item.payload}` : `Ignored: ${item.payload}`,
-      description: `${item.stream} — ${item.reason}`,
+    setActedOn((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
     });
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    try {
+      await postJson('/api/production/dead-letter', { id, action: decision });
+      toast({
+        title: decision === 'retry' ? `Retrying: ${item.payload}` : `Ignored: ${item.payload}`,
+        description: `${item.stream} — ${item.reason}`,
+      });
+    } catch (e) {
+      // Restore item if the gateway rejected the action.
+      setActedOn((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast({
+        title: 'Action failed — restored',
+        description: e instanceof Error ? e.message : 'Server error',
+      });
+    }
   };
 
   return (
@@ -36,7 +65,7 @@ export function DeadLetterInbox() {
         <AlertTriangle className="w-5 h-5 text-rose-600" />
         <h2 className="text-lg font-bold text-gray-800">Dead-Letter Inbox</h2>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
-          {items.length} stuck • Mock
+          {items.length} stuck · {data?.backend === 'live' ? 'LIVE' : 'FALLBACK'}
         </span>
       </div>
 
@@ -62,16 +91,12 @@ export function DeadLetterInbox() {
                       <div className="font-mono text-[11px] text-gray-800 truncate">{it.payload}</div>
                       <div className="text-[10px] text-gray-500">{it.stream} • {it.failedAt}</div>
                     </div>
-                    <button
-                      onClick={() => act(it.id, 'retry')}
-                      className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/90 text-white text-[10px] font-bold hover:bg-emerald-600"
-                    >
+                    <button onClick={() => act(it.id, 'retry')}
+                      className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/90 text-white text-[10px] font-bold hover:bg-emerald-600">
                       <RotateCw className="w-3 h-3" /> Retry
                     </button>
-                    <button
-                      onClick={() => act(it.id, 'ignore')}
-                      className="flex items-center gap-1 px-2 py-1 rounded bg-gray-400/90 text-white text-[10px] font-bold hover:bg-gray-500"
-                    >
+                    <button onClick={() => act(it.id, 'ignore')}
+                      className="flex items-center gap-1 px-2 py-1 rounded bg-gray-400/90 text-white text-[10px] font-bold hover:bg-gray-500">
                       <EyeOff className="w-3 h-3" /> Ignore
                     </button>
                   </div>
