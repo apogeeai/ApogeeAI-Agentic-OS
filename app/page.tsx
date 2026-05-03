@@ -9,6 +9,21 @@ import { WindowErrorBoundary } from '@/components/windows/WindowErrorBoundary';
 import { Toaster } from '@/components/ui/toaster';
 
 const DOCK_RESERVE = 80;
+const LAYOUT_STORAGE_KEY = 'desktop-window-layout-v1';
+
+interface PersistedGeom {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  isMaximized: boolean;
+  previousState?: { x: number; y: number; width: number; height: number };
+}
+
+interface PersistedLayout {
+  open: string[];
+  geometries: Record<string, PersistedGeom>;
+}
 
 function clampWindowToViewport(
   x: number,
@@ -68,6 +83,8 @@ export default function Desktop() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; windowId: string } | null>(null);
   const [greenNoiseEnabled, setGreenNoiseEnabled] = useState(false);
   const greenNoiseRef = useRef<HTMLAudioElement | null>(null);
+  const savedGeometriesRef = useRef<Record<string, PersistedGeom>>({});
+  const [layoutHydrated, setLayoutHydrated] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'Money': false,
     'Production': false,
@@ -181,6 +198,123 @@ export default function Desktop() {
       { icon: Cpu, label: 'GPU Telemetry', active: false, href: '#', content: 'gpu-telemetry' },
       { icon: Briefcase, label: 'C-Suite Standup', active: false, href: '#', content: 'c-suite-standup' },
     ],
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+      if (raw) {
+        const data = JSON.parse(raw) as PersistedLayout;
+        if (data && typeof data === 'object' && data.geometries) {
+          savedGeometriesRef.current = data.geometries || {};
+          const allItems = Object.values(sidebarSections).flat();
+          const sidebarWidth = sidebarOpen ? 256 : 64;
+          const restored: WindowState[] = [];
+          let z = 0;
+          (data.open || []).forEach((content) => {
+            const item = allItems.find((i) => 'content' in i && i.content === content);
+            const geom = data.geometries[content];
+            if (!item || !geom) return;
+            z += 1;
+            const id = `window-${Date.now()}-${z}-${Math.random().toString(36).slice(2, 7)}`;
+            if (geom.isMaximized) {
+              restored.push({
+                id,
+                title: item.label,
+                icon: item.icon,
+                content,
+                x: sidebarWidth,
+                y: 0,
+                width: window.innerWidth - sidebarWidth,
+                height: window.innerHeight,
+                isMinimized: false,
+                isMaximized: true,
+                zIndex: z,
+                previousState: geom.previousState,
+              });
+            } else {
+              const c = clampWindowToViewport(
+                geom.x,
+                geom.y,
+                geom.width,
+                geom.height,
+                sidebarWidth,
+                undefined,
+                undefined,
+                DOCK_RESERVE,
+              );
+              restored.push({
+                id,
+                title: item.label,
+                icon: item.icon,
+                content,
+                x: c.x,
+                y: c.y,
+                width: c.width,
+                height: c.height,
+                isMinimized: false,
+                isMaximized: false,
+                zIndex: z,
+                previousState: geom.previousState,
+              });
+            }
+          });
+          if (restored.length) {
+            setWindows(restored);
+            setHighestZIndex(z);
+          }
+        }
+      }
+    } catch {}
+    setLayoutHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!layoutHydrated) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const ordered = [...windows].sort((a, b) => a.zIndex - b.zIndex);
+      ordered.forEach((w) => {
+        if (w.isMaximized) {
+          const base = w.previousState ?? { x: w.x, y: w.y, width: w.width, height: w.height };
+          savedGeometriesRef.current[w.content] = {
+            x: base.x,
+            y: base.y,
+            width: base.width,
+            height: base.height,
+            isMaximized: true,
+            previousState: w.previousState,
+          };
+        } else {
+          savedGeometriesRef.current[w.content] = {
+            x: w.x,
+            y: w.y,
+            width: w.width,
+            height: w.height,
+            isMaximized: false,
+            previousState: w.previousState,
+          };
+        }
+      });
+      const data: PersistedLayout = {
+        open: ordered.map((w) => w.content),
+        geometries: savedGeometriesRef.current,
+      };
+      localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(data));
+    } catch {}
+  }, [windows, layoutHydrated]);
+
+  const resetLayout = () => {
+    savedGeometriesRef.current = {};
+    setWindows([]);
+    setHighestZIndex(1);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(LAYOUT_STORAGE_KEY);
+      } catch {}
+    }
   };
 
   const toggleSection = (section: string) => {
@@ -316,6 +450,43 @@ export default function Desktop() {
     const nextZ = highestZIndex + 1;
 
     setWindows(prev => {
+      const saved = savedGeometriesRef.current[item.content || 'default'];
+      if (saved) {
+        if (saved.isMaximized) {
+          const newWindow: WindowState = {
+            id: newId,
+            title: item.label,
+            icon: item.icon,
+            x: sidebarWidth,
+            y: 0,
+            width: vw - sidebarWidth,
+            height: vh,
+            isMinimized: false,
+            isMaximized: true,
+            zIndex: nextZ,
+            content: item.content || 'default',
+            previousState: saved.previousState,
+          };
+          return [...prev, newWindow];
+        }
+        const c = clampWindowToViewport(saved.x, saved.y, saved.width, saved.height, sidebarWidth, vw, vh, DOCK_RESERVE);
+        const newWindow: WindowState = {
+          id: newId,
+          title: item.label,
+          icon: item.icon,
+          x: c.x,
+          y: c.y,
+          width: c.width,
+          height: c.height,
+          isMinimized: false,
+          isMaximized: false,
+          zIndex: nextZ,
+          content: item.content || 'default',
+          previousState: saved.previousState,
+        };
+        return [...prev, newWindow];
+      }
+
       const visibleWindows = prev.filter(w => !w.isMinimized);
       const last = visibleWindows[visibleWindows.length - 1];
 
@@ -693,6 +864,17 @@ export default function Desktop() {
             >
               <X className="w-4 h-4" />
               Close
+            </button>
+            <div className="border-t border-gray-200 my-1" />
+            <button
+              onClick={() => {
+                resetLayout();
+                setContextMenu(null);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Reset layout
             </button>
           </div>
         )}
