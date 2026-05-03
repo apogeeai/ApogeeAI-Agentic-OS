@@ -165,38 +165,38 @@ export default function Desktop() {
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   };
 
-  const computeGridLayout = () => {
+  const computeGridLayout = (slotsNeeded: number = 1) => {
     const sidebarWidth = sidebarOpen ? 256 : 64;
     const TOP_RESERVE = 20;
     const SIDE_PAD = 16;
     const GAP = 16;
-    const MIN_WINDOW_WIDTH = 320;
-    const MIN_WINDOW_HEIGHT = 200;
-    const TARGET_WINDOW_WIDTH = 480;
-    const TARGET_WINDOW_HEIGHT = 320;
-    const MIN_ROWS = 2;
+    const MIN_WINDOW_WIDTH = 240;
+    const MIN_WINDOW_HEIGHT = 160;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    const minZoneForRows = MIN_ROWS * MIN_WINDOW_HEIGHT + (MIN_ROWS - 1) * GAP + TOP_RESERVE;
-    const maxZone = Math.max(MIN_WINDOW_HEIGHT + TOP_RESERVE, viewportHeight - 80);
-    const topZoneHeight = Math.min(maxZone, Math.max(viewportHeight * 0.4, minZoneForRows));
     const availableWidth = Math.max(MIN_WINDOW_WIDTH, viewportWidth - sidebarWidth - SIDE_PAD);
-    const availableHeight = Math.max(MIN_WINDOW_HEIGHT, topZoneHeight - TOP_RESERVE);
+    const maxZoneHeight = Math.max(MIN_WINDOW_HEIGHT + TOP_RESERVE, viewportHeight - 80);
+    const availableHeight = Math.max(MIN_WINDOW_HEIGHT, maxZoneHeight - TOP_RESERVE);
 
-    const cols = Math.max(1, Math.floor((availableWidth + GAP) / (MIN_WINDOW_WIDTH + GAP)));
+    const maxCols = Math.max(1, Math.floor((availableWidth + GAP) / (MIN_WINDOW_WIDTH + GAP)));
+    const maxRows = Math.max(1, Math.floor((availableHeight + GAP) / (MIN_WINDOW_HEIGHT + GAP)));
+
+    const need = Math.max(1, slotsNeeded);
+    let cols = Math.min(maxCols, Math.ceil(Math.sqrt(need * (availableWidth / availableHeight))));
+    cols = Math.max(1, Math.min(maxCols, cols));
+    let rows = Math.max(1, Math.ceil(need / cols));
+    if (rows > maxRows) {
+      rows = maxRows;
+      cols = Math.max(1, Math.min(maxCols, Math.ceil(need / rows)));
+    }
+
     const rawWindowWidth = (availableWidth - GAP * (cols - 1)) / cols;
-    const widthCap = Math.max(1, viewportWidth - sidebarWidth - SIDE_PAD);
-    const windowWidth = Math.max(1, Math.min(widthCap, TARGET_WINDOW_WIDTH, Math.max(MIN_WINDOW_WIDTH, rawWindowWidth)));
-
-    const rows = Math.max(1, Math.floor((availableHeight + GAP) / (MIN_WINDOW_HEIGHT + GAP)));
     const rawWindowHeight = (availableHeight - GAP * (rows - 1)) / rows;
-    const heightCap = Math.max(1, viewportHeight - TOP_RESERVE);
-    const windowHeight = Math.max(1, Math.min(heightCap, TARGET_WINDOW_HEIGHT, Math.max(MIN_WINDOW_HEIGHT, rawWindowHeight)));
+    const finalWidth = Math.max(1, Math.floor(Math.min(rawWindowWidth, 800)));
+    const finalHeight = Math.max(1, Math.floor(Math.min(rawWindowHeight, 500)));
 
-    const finalWidth = Math.floor(windowWidth);
-    const finalHeight = Math.floor(windowHeight);
     const slotsPerZone = Math.max(1, cols * rows);
 
     const slotPosition = (slotIndex: number) => {
@@ -215,7 +215,7 @@ export default function Desktop() {
       };
     };
 
-    return { width: finalWidth, height: finalHeight, slotPosition };
+    return { width: finalWidth, height: finalHeight, slotPosition, slotsPerZone };
   };
 
   const openWindow = (item: typeof sidebarSections['Dashboard'][0]) => {
@@ -231,8 +231,8 @@ export default function Desktop() {
       return;
     }
 
-    const { width, height, slotPosition } = computeGridLayout();
     const visibleCount = windows.filter(w => !w.isMinimized).length;
+    const { width, height, slotPosition } = computeGridLayout(visibleCount + 1);
     const { x, y } = slotPosition(visibleCount);
 
     const newWindow: WindowState = {
@@ -257,7 +257,8 @@ export default function Desktop() {
     const hasVisible = windows.some(w => !w.isMinimized);
     if (!hasVisible) return;
 
-    const { width, height, slotPosition } = computeGridLayout();
+    const visibleCount = windows.filter(w => !w.isMinimized).length;
+    const { width, height, slotPosition } = computeGridLayout(visibleCount);
     let slot = 0;
     setWindows(windows.map(w => {
       if (w.isMinimized) return w;
