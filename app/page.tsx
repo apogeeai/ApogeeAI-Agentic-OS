@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, PanInfo } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid } from 'lucide-react';
 import { WindowContent } from '@/components/windows/WindowContent';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -165,19 +165,7 @@ export default function Desktop() {
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   };
 
-  const openWindow = (item: typeof sidebarSections['Dashboard'][0]) => {
-    if (item.href !== '#') return;
-
-    const existingWindow = windows.find(w => w.content === item.content);
-    if (existingWindow) {
-      if (existingWindow.isMinimized) {
-        restoreWindow(existingWindow.id);
-      } else {
-        bringToFront(existingWindow.id);
-      }
-      return;
-    }
-
+  const computeGridLayout = () => {
     const sidebarWidth = sidebarOpen ? 256 : 64;
     const TOP_RESERVE = 20;
     const SIDE_PAD = 16;
@@ -207,31 +195,54 @@ export default function Desktop() {
     const heightCap = Math.max(1, viewportHeight - TOP_RESERVE);
     const windowHeight = Math.max(1, Math.min(heightCap, TARGET_WINDOW_HEIGHT, Math.max(MIN_WINDOW_HEIGHT, rawWindowHeight)));
 
-    const slotsPerZone = Math.max(1, cols * rows);
-    const visibleCount = windows.filter(w => !w.isMinimized).length;
-    const slotIndex = visibleCount % slotsPerZone;
-    const col = slotIndex % cols;
-    const row = Math.floor(slotIndex / cols);
-
     const finalWidth = Math.floor(windowWidth);
     const finalHeight = Math.floor(windowHeight);
-    const rawX = sidebarWidth + col * (finalWidth + GAP);
-    const rawY = TOP_RESERVE + row * (finalHeight + GAP);
-    const maxX = Math.max(sidebarWidth, viewportWidth - finalWidth);
-    const maxY = Math.max(TOP_RESERVE, viewportHeight - finalHeight);
-    const snappedX = snapToGrid(Math.min(Math.max(sidebarWidth, rawX), maxX));
-    const snappedY = snapToGrid(Math.min(Math.max(TOP_RESERVE, rawY), maxY));
-    const finalX = Math.min(Math.max(0, snappedX), maxX);
-    const finalY = Math.min(Math.max(0, snappedY), maxY);
+    const slotsPerZone = Math.max(1, cols * rows);
+
+    const slotPosition = (slotIndex: number) => {
+      const wrapped = ((slotIndex % slotsPerZone) + slotsPerZone) % slotsPerZone;
+      const col = wrapped % cols;
+      const row = Math.floor(wrapped / cols);
+      const rawX = sidebarWidth + col * (finalWidth + GAP);
+      const rawY = TOP_RESERVE + row * (finalHeight + GAP);
+      const maxX = Math.max(sidebarWidth, viewportWidth - finalWidth);
+      const maxY = Math.max(TOP_RESERVE, viewportHeight - finalHeight);
+      const snappedX = snapToGrid(Math.min(Math.max(sidebarWidth, rawX), maxX));
+      const snappedY = snapToGrid(Math.min(Math.max(TOP_RESERVE, rawY), maxY));
+      return {
+        x: Math.min(Math.max(0, snappedX), maxX),
+        y: Math.min(Math.max(0, snappedY), maxY),
+      };
+    };
+
+    return { width: finalWidth, height: finalHeight, slotPosition };
+  };
+
+  const openWindow = (item: typeof sidebarSections['Dashboard'][0]) => {
+    if (item.href !== '#') return;
+
+    const existingWindow = windows.find(w => w.content === item.content);
+    if (existingWindow) {
+      if (existingWindow.isMinimized) {
+        restoreWindow(existingWindow.id);
+      } else {
+        bringToFront(existingWindow.id);
+      }
+      return;
+    }
+
+    const { width, height, slotPosition } = computeGridLayout();
+    const visibleCount = windows.filter(w => !w.isMinimized).length;
+    const { x, y } = slotPosition(visibleCount);
 
     const newWindow: WindowState = {
       id: `window-${Date.now()}`,
       title: item.label,
       icon: item.icon,
-      x: finalX,
-      y: finalY,
-      width: finalWidth,
-      height: finalHeight,
+      x,
+      y,
+      width,
+      height,
       isMinimized: false,
       isMaximized: false,
       zIndex: highestZIndex + 1,
@@ -240,6 +251,27 @@ export default function Desktop() {
 
     setWindows([...windows, newWindow]);
     setHighestZIndex(highestZIndex + 1);
+  };
+
+  const tidyWindows = () => {
+    const hasVisible = windows.some(w => !w.isMinimized);
+    if (!hasVisible) return;
+
+    const { width, height, slotPosition } = computeGridLayout();
+    let slot = 0;
+    setWindows(windows.map(w => {
+      if (w.isMinimized) return w;
+      const { x, y } = slotPosition(slot++);
+      return {
+        ...w,
+        x,
+        y,
+        width,
+        height,
+        isMaximized: false,
+        previousState: undefined,
+      };
+    }));
   };
 
   const closeWindow = (id: string) => {
@@ -533,6 +565,17 @@ export default function Desktop() {
         )}
 
         <div className="fixed bottom-4 right-4 flex flex-col gap-2">
+          <motion.button
+            onClick={tidyWindows}
+            disabled={!windows.some(w => !w.isMinimized)}
+            className="p-4 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl hover:bg-white/20 transition-all shadow-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/10"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title="Tidy Windows"
+          >
+            <LayoutGrid className="w-6 h-6 text-white" />
+          </motion.button>
+
           <motion.button
             onClick={changeBg}
             className="p-4 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl hover:bg-white/20 transition-all shadow-lg"
