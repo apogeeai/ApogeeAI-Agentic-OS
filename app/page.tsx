@@ -837,7 +837,6 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
         width: `${window.width}px`,
         height: `${window.height}px`,
         zIndex: window.zIndex,
-        position: 'relative',
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         backgroundColor: 'rgba(255, 255, 255, 0.28)',
