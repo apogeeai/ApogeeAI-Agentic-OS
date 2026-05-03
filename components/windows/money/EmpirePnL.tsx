@@ -2,6 +2,7 @@
 
 import { TrendingUp, TrendingDown, Headphones, Camera, ShoppingBag, MapPin, Briefcase, LayoutDashboard, type LucideIcon } from 'lucide-react';
 import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 
 interface EmpireRow {
   id: string;
@@ -21,7 +22,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 export function EmpirePnL() {
   const { data } = useEndpoint<{ empires: EmpireRow[]; backend: 'live' | 'fallback' }>(
     '/api/money/empires',
-    { intervalMs: 30_000 },
+    { intervalMs: 30_000, initialData: { empires: TENANT_FIXTURES.empires as EmpireRow[], backend: 'fallback' } },
   );
   const empires = data?.empires ?? [];
 

@@ -4,13 +4,14 @@ import { useMemo, useState } from 'react';
 import { Image as ImageIcon, Check, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import type { DigitalGood } from './mockData';
 
 export function DigitalGoodsGallery() {
   const { toast } = useToast();
   const { data } = useEndpoint<{ goods: DigitalGood[]; backend: 'live' | 'fallback' }>(
     '/api/production/goods',
-    { intervalMs: 60_000 },
+    { intervalMs: 60_000, initialData: { goods: TENANT_FIXTURES.goods as DigitalGood[], backend: 'fallback' } },
   );
   // Track approved/killed item ids so subsequent server polls don't bring them back.
   const [actedOn, setActedOn] = useState<Set<string>>(new Set());

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import * as Slider from '@radix-ui/react-slider';
 import { BarChart3 } from 'lucide-react';
 import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import { TENANT_LABEL, type Tenant } from './mockData';
 
 const TENANT_FILL: Record<Tenant, string> = {
@@ -21,7 +22,7 @@ const DEFAULT_THRESHOLD = 70;
 export function TastemakerHistogram() {
   const { data } = useEndpoint<{ scores: { tenant: Tenant; score: number }[]; backend: 'live' | 'fallback' }>(
     '/api/quality/scores',
-    { intervalMs: 30_000 },
+    { intervalMs: 30_000, initialData: { scores: TENANT_FIXTURES.scores24h as { tenant: Tenant; score: number }[], backend: 'fallback' } },
   );
   const scores = data?.scores ?? [];
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD);

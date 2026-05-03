@@ -2,6 +2,7 @@
 
 import { Gauge, AlertTriangle } from 'lucide-react';
 import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import { TENANT_LABEL, type Tenant } from './mockData';
 
 interface DriftItem {
@@ -49,7 +50,7 @@ function ArcGauge({ value, threshold }: { value: number; threshold: number }) {
 export function BrandDriftMonitor() {
   const { data } = useEndpoint<{ drift: DriftItem[]; backend: 'live' | 'fallback' }>(
     '/api/quality/drift',
-    { intervalMs: 60_000 },
+    { intervalMs: 60_000, initialData: { drift: TENANT_FIXTURES.drift as DriftItem[], backend: 'fallback' } },
   );
   const drift = data?.drift ?? [];
   const drifted = drift.filter((d) => d.similarity < d.threshold);

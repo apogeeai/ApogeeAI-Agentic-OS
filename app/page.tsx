@@ -68,16 +68,13 @@ export default function Desktop() {
   const [greenNoiseEnabled, setGreenNoiseEnabled] = useState(false);
   const greenNoiseRef = useRef<HTMLAudioElement | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    'Dashboard': true,
-    'Money': true,
-    'Production': true,
-    'Quality': true,
-    'Intelligence': true,
-    'Creative': true,
-    'Projects': true,
-    'Development': true,
-    'Collaboration': false,
-    'System': true,
+    'Dashboard': false,
+    'Money': false,
+    'Production': false,
+    'Quality': false,
+    'Intelligence': false,
+    'Creative': false,
+    'System': false,
   });
 
   const backgrounds = [
@@ -154,8 +151,6 @@ export default function Desktop() {
   const sidebarSections = {
     'Dashboard': [
       { icon: Monitor, label: 'Desktop', active: true, href: '/' },
-      { icon: Activity, label: 'Director Status', active: false, href: '#', content: 'director-status' },
-      { icon: Bell, label: 'Notifications', active: false, href: '#', content: 'notifications' },
     ],
     'Money': [
       { icon: DollarSign, label: 'Revenue Ticker', active: false, href: '#', content: 'revenue-ticker' },
@@ -184,36 +179,10 @@ export default function Desktop() {
       { icon: Brain, label: 'LoRA Trainer', active: false, href: '#', content: 'lora-trainer' },
       { icon: Film, label: 'Video Motion Lab', active: false, href: '#', content: 'video-motion-lab' },
     ],
-    'Projects': [
-      { icon: FileText, label: 'Task Ledger', active: false, href: '#', content: 'task-ledger' },
-      { icon: Inbox, label: 'Approval Inbox', active: false, href: '#', content: 'approval-inbox' },
-      { icon: TrendingUp, label: 'Pipeline Flow', active: false, href: '#', content: 'pipeline-flow' },
-      { icon: Grid3x3, label: 'Kanban', active: false, href: '#', content: 'kanban' },
-      { icon: GitPullRequest, label: 'Wiggum Loop', active: false, href: '#', content: 'wiggum-loop' },
-      { icon: DollarSign, label: 'Revenue Tracker', active: false, href: '#', content: 'revenue-tracker' },
-    ],
-    'Development': [
-      { icon: Terminal, label: 'Terminal', active: false, href: '#', content: 'terminal' },
-      { icon: Code, label: 'Code Editor', active: false, href: '#', content: 'code-editor' },
-      { icon: Database, label: 'Database', active: false, href: '#', content: 'database' },
-      { icon: GitBranch, label: 'Version Control', active: false, href: '#', content: 'version-control' },
-      { icon: CloudCog, label: 'Cloud Services', active: false, href: '#', content: 'cloud-services' },
-    ],
-    'Collaboration': [
-      { icon: MessagesSquare, label: 'Chat', active: false, href: '#', content: 'chat' },
-      { icon: Calendar, label: 'Schedule', active: false, href: '#', content: 'schedule' },
-      { icon: Folder, label: 'Files', active: false, href: '#', content: 'files' },
-    ],
     'System': [
       { icon: Network, label: 'Agent Swarm Grid', active: false, href: '#', content: 'agent-swarm-grid' },
       { icon: Cpu, label: 'GPU Telemetry', active: false, href: '#', content: 'gpu-telemetry' },
       { icon: Briefcase, label: 'C-Suite Standup', active: false, href: '#', content: 'c-suite-standup' },
-      { icon: Workflow, label: 'Workflows', active: false, href: '#', content: 'workflows' },
-      { icon: Brain, label: 'AI Models', active: false, href: '#', content: 'ai-models' },
-      { icon: Cpu, label: 'GPU Monitor', active: false, href: '#', content: 'gpu-monitor' },
-      { icon: LineChart, label: 'Analytics', active: false, href: '#', content: 'analytics' },
-      { icon: Clock, label: 'History', active: false, href: '#', content: 'history' },
-      { icon: Zap, label: 'Automations', active: false, href: '#', content: 'automations' },
     ],
   };
 

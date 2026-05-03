@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { DollarSign, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 
 interface Revenue {
   totalMrr: number;
@@ -14,6 +15,11 @@ interface Revenue {
   perTenant: { id: string; name: string; mrr: number }[];
   backend: 'live' | 'fallback';
 }
+
+const SEED_REVENUE: Revenue = {
+  ...TENANT_FIXTURES.revenue,
+  backend: 'fallback',
+};
 
 function seedSpark(seed: number, points: number = 30) {
   const out: { day: number; value: number }[] = [];
@@ -26,7 +32,7 @@ function seedSpark(seed: number, points: number = 30) {
 }
 
 export function RevenueTicker() {
-  const { data } = useEndpoint<Revenue>('/api/money/revenue', { intervalMs: 15_000 });
+  const { data } = useEndpoint<Revenue>('/api/money/revenue', { intervalMs: 15_000, initialData: SEED_REVENUE });
 
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -34,11 +40,8 @@ export function RevenueTicker() {
     return () => clearInterval(t);
   }, []);
 
-  if (!data) {
-    return <div className="text-xs text-gray-500 p-4">Loading revenue…</div>;
-  }
-
-  const { totalMrr, todayGross, yesterdayGross, weekGross, monthGross, perTenant } = data;
+  const view = data ?? SEED_REVENUE;
+  const { totalMrr, todayGross, yesterdayGross, weekGross, monthGross, perTenant } = view;
   const spark = seedSpark(tick, 30);
   const dayDelta = yesterdayGross > 0 ? ((todayGross - yesterdayGross) / yesterdayGross) * 100 : 0;
 
@@ -55,7 +58,7 @@ export function RevenueTicker() {
         <Activity className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Live Revenue Ticker</h2>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
-          {data.backend === 'live' ? 'LIVE' : 'FALLBACK'}
+          {view.backend === 'live' ? 'LIVE' : 'FALLBACK'}
         </span>
       </div>
 

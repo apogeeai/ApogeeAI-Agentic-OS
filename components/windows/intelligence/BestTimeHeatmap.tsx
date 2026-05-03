@@ -6,6 +6,24 @@ import { useToast } from '@/hooks/use-toast';
 import { useEndpoint, postJson } from '@/lib/useEndpoint';
 import { PLATFORMS, TENANTS, TENANT_LABEL, DAY_LABELS, type Tenant, type Platform } from './mockData';
 
+const SEED_HEATMAP: { matrix: number[][]; backend: 'live' | 'fallback' } = (() => {
+  const matrix: number[][] = [];
+  let s = 12345;
+  const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xffffffff; };
+  for (let d = 0; d < 7; d++) {
+    const row: number[] = [];
+    for (let h = 0; h < 24; h++) {
+      const morning = Math.exp(-((h - 8) ** 2) / 16) * 60;
+      const evening = Math.exp(-((h - 20) ** 2) / 14) * 90;
+      const weekend = d === 0 || d === 6 ? 12 : 0;
+      const noise = rnd() * 25;
+      row.push(Math.max(0, Math.min(100, Math.round(morning + evening + weekend + noise - 10))));
+    }
+    matrix.push(row);
+  }
+  return { matrix, backend: 'fallback' };
+})();
+
 function cellColor(v: number): string {
   if (v < 25) return 'rgba(225,29,72,0.55)';
   if (v < 45) return 'rgba(245,158,11,0.55)';
@@ -22,6 +40,7 @@ export function BestTimeHeatmap() {
 
   const { data } = useEndpoint<{ matrix: number[][]; backend: 'live' | 'fallback' }>(
     `/api/intelligence/heatmap?tenant=${encodeURIComponent(tenant)}&platform=${encodeURIComponent(platform)}`,
+    { initialData: SEED_HEATMAP },
   );
   const matrix = data?.matrix ?? [];
 

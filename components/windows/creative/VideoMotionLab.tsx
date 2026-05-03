@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Film, Play, Loader2, Check, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 
 type JobStatus = 'pending' | 'running' | 'done';
 
@@ -47,7 +48,7 @@ export function VideoMotionLab() {
   const { toast } = useToast();
   const { data, refresh } = useEndpoint<{ jobs: Job[]; backend: 'live' | 'fallback' }>(
     '/api/video/jobs',
-    { intervalMs: 5000 },
+    { intervalMs: 5000, initialData: { jobs: TENANT_FIXTURES.videoJobs as Job[], backend: 'fallback' } },
   );
   const jobs = data?.jobs ?? [];
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['j1']));

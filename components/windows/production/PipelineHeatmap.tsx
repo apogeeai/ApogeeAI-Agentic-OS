@@ -2,12 +2,13 @@
 
 import { GitBranch, AlertCircle } from 'lucide-react';
 import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import type { PipelineStage } from './mockData';
 
 export function PipelineHeatmap() {
   const { data } = useEndpoint<{ stages: PipelineStage[]; backend: 'live' | 'fallback' }>(
     '/api/production/pipeline',
-    { intervalMs: 5000 },
+    { intervalMs: 5000, initialData: { stages: TENANT_FIXTURES.pipeline as PipelineStage[], backend: 'fallback' } },
   );
   const stages = data?.stages ?? [];
   const maxInflight = Math.max(1, ...stages.map((s) => s.inflight));

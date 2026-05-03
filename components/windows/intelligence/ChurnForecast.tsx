@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { TrendingDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import type { Lead } from './mockData';
 
 type SortKey = 'business' | 'industry' | 'convertPct' | 'churnPct' | 'mrr';
@@ -18,7 +19,7 @@ function light(pct: number, kind: 'good' | 'bad') {
 export function ChurnForecast() {
   const { data } = useEndpoint<{ leads: Lead[]; backend: 'live' | 'fallback' }>(
     '/api/intelligence/leads',
-    { intervalMs: 60_000 },
+    { intervalMs: 60_000, initialData: { leads: TENANT_FIXTURES.leads as Lead[], backend: 'fallback' } },
   );
   const leads = data?.leads ?? [];
 

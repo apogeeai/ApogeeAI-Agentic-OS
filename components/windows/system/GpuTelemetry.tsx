@@ -3,6 +3,20 @@
 import { Cpu, Zap, Database, Layers } from 'lucide-react';
 import { useEndpoint } from '@/lib/useEndpoint';
 
+const SEED_METRICS = {
+  metrics: [
+    { label: 'Sage RTX 3090', sublabel: 'GPU utilisation', value: 64, max: 100, unit: '%', color: '#10b981' },
+    { label: 'Sage RTX 3090', sublabel: 'VRAM 24GB', value: 18.2, max: 24, unit: 'GB', color: '#0ea5e9' },
+    { label: 'Sage RTX 4090', sublabel: 'GPU utilisation', value: 81, max: 100, unit: '%', color: '#10b981' },
+    { label: 'Sage RTX 4090', sublabel: 'VRAM 24GB', value: 21.4, max: 24, unit: 'GB', color: '#0ea5e9' },
+    { label: 'vLLM :8000', sublabel: 'Queue depth', value: 3, max: 32, unit: '', color: '#8b5cf6' },
+    { label: 'vLLM :8001', sublabel: 'Queue depth', value: 7, max: 32, unit: '', color: '#8b5cf6' },
+    { label: 'Ollama', sublabel: 'Cache hit rate', value: 92, max: 100, unit: '%', color: '#f59e0b' },
+    { label: 'ComfyUI', sublabel: 'Throughput / min', value: 14, max: 40, unit: 'jobs', color: '#ec4899' },
+  ] as Metric[],
+  backend: 'fallback' as const,
+};
+
 interface Metric {
   label: string;
   value: number;
@@ -19,7 +33,7 @@ function clamp(n: number, lo: number, hi: number) {
 export function GpuTelemetry() {
   const { data } = useEndpoint<{ metrics: Metric[]; backend: 'live' | 'fallback' }>(
     '/api/gpu/telemetry',
-    { intervalMs: 2000 },
+    { intervalMs: 2000, initialData: SEED_METRICS },
   );
   const metrics = data?.metrics ?? [];
   const isLive = data?.backend === 'live';

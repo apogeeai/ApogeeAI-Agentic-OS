@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Sparkles, X, Play, Music, FileText, Image as ImageIcon } from 'lucide-react';
 import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import { TENANT_LABEL, TENANT_COLOR, type Artifact } from './mockData';
 
 const TYPE_ICON = { image: ImageIcon, audio: Music, video: Play, text: FileText };
@@ -10,7 +11,7 @@ const TYPE_ICON = { image: ImageIcon, audio: Music, video: Play, text: FileText 
 export function OvernightReel() {
   const { data } = useEndpoint<{ artifacts: Artifact[]; backend: 'live' | 'fallback' }>(
     '/api/production/artifacts',
-    { intervalMs: 60_000 },
+    { intervalMs: 60_000, initialData: { artifacts: TENANT_FIXTURES.overnight as Artifact[], backend: 'fallback' } },
   );
   const artifacts = data?.artifacts ?? [];
   const [preview, setPreview] = useState<Artifact | null>(null);

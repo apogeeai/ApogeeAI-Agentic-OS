@@ -3,6 +3,7 @@
 import { Receipt, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 import { useEndpoint } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 
 interface Costs {
   dailyBurn: number;
@@ -11,14 +12,15 @@ interface Costs {
   backend: 'live' | 'fallback';
 }
 
+const SEED_COSTS: Costs = { ...TENANT_FIXTURES.costs, backend: 'fallback' };
+
 export function CostProfitLedger() {
-  const { data } = useEndpoint<Costs>('/api/money/costs', { intervalMs: 30_000 });
-  const { data: rev } = useEndpoint<{ todayGross: number }>('/api/money/revenue', { intervalMs: 30_000 });
+  const { data } = useEndpoint<Costs>('/api/money/costs', { intervalMs: 30_000, initialData: SEED_COSTS });
+  const { data: rev } = useEndpoint<{ todayGross: number }>('/api/money/revenue', { intervalMs: 30_000, initialData: { todayGross: TENANT_FIXTURES.revenue.todayGross } });
 
-  if (!data) return <div className="text-xs text-gray-500 p-4">Loading costs…</div>;
-
-  const totalSpend = data.models.reduce((a, m) => a + m.spend, 0);
-  const dailyBurn = data.dailyBurn;
+  const view = data ?? SEED_COSTS;
+  const totalSpend = view.models.reduce((a, m) => a + m.spend, 0);
+  const dailyBurn = view.dailyBurn;
   const dailyRevenue = rev?.todayGross ?? 0;
   const dailyNet = dailyRevenue - dailyBurn;
   const runwayDays = dailyNet > 0 ? Infinity : Math.floor(2400 / Math.max(1, Math.abs(dailyNet)));
@@ -29,7 +31,7 @@ export function CostProfitLedger() {
         <Receipt className="w-5 h-5 text-gray-700" />
         <h2 className="text-lg font-bold text-gray-800">Cost &amp; Profit Ledger</h2>
         <span className="ml-auto text-[10px] uppercase tracking-wider text-gray-500">
-          {data.backend === 'live' ? 'LIVE' : 'FALLBACK'}
+          {view.backend === 'live' ? 'LIVE' : 'FALLBACK'}
         </span>
       </div>
 
@@ -52,13 +54,13 @@ export function CostProfitLedger() {
         <div className="text-xs font-semibold text-gray-700 mb-2">Token Spend by Model (30d)</div>
         <div className="h-40">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data.models} layout="vertical" margin={{ left: 0, right: 20 }}>
+            <BarChart data={view.models} layout="vertical" margin={{ left: 0, right: 20 }}>
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="model" tick={{ fontSize: 10, fill: '#374151' }} width={130} />
               <Tooltip contentStyle={{ background: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: 8, fontSize: 11 }}
                 formatter={(v: number) => [`$${v.toFixed(2)}`, 'Spend']} />
               <Bar dataKey="spend" radius={[0, 4, 4, 0]}>
-                {data.models.map((m, i) => <Cell key={i} fill={m.color} />)}
+                {view.models.map((m, i) => <Cell key={i} fill={m.color} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -69,7 +71,7 @@ export function CostProfitLedger() {
       <div className="bg-white/40 backdrop-blur-sm rounded-lg p-3 border border-white/60">
         <div className="text-xs font-semibold text-gray-700 mb-2">Per-Tenant Weekly Burn vs Budget</div>
         <div className="space-y-1.5">
-          {data.tenants.map((t) => {
+          {view.tenants.map((t) => {
             const pct = t.budget > 0 ? (t.spent / t.budget) * 100 : 0;
             const over = pct > 90;
             return (

@@ -5,6 +5,33 @@ import { motion } from 'framer-motion';
 import { Activity, X } from 'lucide-react';
 import { useEndpoint } from '@/lib/useEndpoint';
 
+const SEED_AGENTS = {
+  agents: [
+    { name: 'DIRECTOR', tier: 'core', role: 'Routes & decomposes', status: 'working' },
+    { name: 'MAKER', tier: 'core', role: 'Creative production', status: 'working' },
+    { name: 'BUILDER', tier: 'core', role: 'Code & infra', status: 'idle' },
+    { name: 'SELLER', tier: 'core', role: 'Distribution', status: 'working' },
+    { name: 'OPS', tier: 'core', role: 'Daily operations', status: 'idle' },
+    { name: 'WIGGUM', tier: 'core', role: 'Brand/compliance gate', status: 'working' },
+    { name: 'SKILL_REVIEWER', tier: 'core', role: 'Skill bundle review', status: 'idle' },
+    { name: 'gsd_runner', tier: 'sub', role: 'CEO.Decomposer', status: 'working' },
+    { name: 'claudia', tier: 'sub', role: 'Owner briefing', status: 'idle' },
+    { name: 'trendscout', tier: 'sub', role: 'Trend research', status: 'working' },
+    { name: 'creative', tier: 'sub', role: 'Brief authoring', status: 'working' },
+    { name: 'tastemaker', tier: 'sub', role: 'Quality scoring', status: 'idle' },
+    { name: 'designer', tier: 'sub', role: 'ComfyUI assets', status: 'errored' },
+    { name: 'audio', tier: 'sub', role: '8D / binaural', status: 'offline' },
+    { name: 'editor', tier: 'sub', role: 'Video assembly', status: 'working' },
+    { name: 'twitter_analyst', tier: 'sub', role: 'X content analysis', status: 'idle' },
+    { name: 'community', tier: 'sub', role: 'Community ops', status: 'working' },
+    { name: 'rss_brief_agent', tier: 'sub', role: 'RSS monitoring', status: 'idle' },
+    { name: 'prospector', tier: 'sub', role: 'Lead sourcing', status: 'working' },
+    { name: 'outreach_writer', tier: 'sub', role: 'Cold outreach', status: 'idle' },
+    { name: 'retention_agent', tier: 'sub', role: 'Churn save', status: 'working' },
+  ] as Agent[],
+  backend: 'fallback' as const,
+};
+
 type AgentStatus = 'idle' | 'working' | 'errored' | 'offline';
 interface Agent { name: string; tier: 'core' | 'sub'; role: string; status: AgentStatus }
 
@@ -18,7 +45,7 @@ const STATUS_STYLES: Record<AgentStatus, { dot: string; ring: string; label: str
 export function AgentSwarmGrid() {
   const { data } = useEndpoint<{ agents: Agent[]; backend: 'live' | 'fallback' }>(
     '/api/agents/swarm',
-    { intervalMs: 2500 },
+    { intervalMs: 2500, initialData: SEED_AGENTS },
   );
   const agents = data?.agents ?? [];
   const isLive = data?.backend === 'live';

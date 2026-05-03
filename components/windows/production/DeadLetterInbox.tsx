@@ -4,13 +4,14 @@ import { useMemo, useState } from 'react';
 import { AlertTriangle, RotateCw, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import { TENANT_LABEL, TENANT_COLOR, type DeadLetterItem } from './mockData';
 
 export function DeadLetterInbox() {
   const { toast } = useToast();
   const { data } = useEndpoint<{ items: DeadLetterItem[]; backend: 'live' | 'fallback' }>(
     '/api/production/dead-letter',
-    { intervalMs: 15_000 },
+    { intervalMs: 15_000, initialData: { items: TENANT_FIXTURES.deadLetter as DeadLetterItem[], backend: 'fallback' } },
   );
   // Track operator actions locally so polled server state doesn't resurrect items
   // that have already been retried/ignored.

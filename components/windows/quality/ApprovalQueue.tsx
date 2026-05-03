@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-mo
 import { CheckSquare, Check, X, Shield, ShieldAlert, ShieldX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import { TENANT_LABEL, TENANT_COLOR, type PendingItem } from './mockData';
 
 const VERDICT_ICON = { pass: Shield, caution: ShieldAlert, flag: ShieldX };
@@ -61,7 +62,7 @@ export function ApprovalQueue() {
   const { toast } = useToast();
   const { data } = useEndpoint<{ items: PendingItem[]; backend: 'live' | 'fallback' }>(
     '/api/quality/approvals',
-    { intervalMs: 15_000 },
+    { intervalMs: 15_000, initialData: { items: TENANT_FIXTURES.approvals as PendingItem[], backend: 'fallback' } },
   );
   // Track items the operator has acted on locally so polling doesn't reintroduce them.
   const [actedOn, setActedOn] = useState<Set<string>>(new Set());

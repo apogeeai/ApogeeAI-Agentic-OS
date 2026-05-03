@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { Radar, ArrowUp, ArrowDown, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEndpoint, postJson } from '@/lib/useEndpoint';
+import { TENANT_FIXTURES } from '@/lib/openclaw-fixtures';
 import type { TrendSignal } from './mockData';
 
 type SortKey = 'name' | 'source' | 'peakInDays' | 'confidence' | 'expectedRevenue';
@@ -21,7 +22,7 @@ export function TrendRadar() {
   const { toast } = useToast();
   const { data } = useEndpoint<{ signals: TrendSignal[]; backend: 'live' | 'fallback' }>(
     '/api/intelligence/trends',
-    { intervalMs: 30_000 },
+    { intervalMs: 30_000, initialData: { signals: TENANT_FIXTURES.trends as TrendSignal[], backend: 'fallback' } },
   );
   const signals = data?.signals ?? [];
   const [sortKey, setSortKey] = useState<SortKey>('confidence');

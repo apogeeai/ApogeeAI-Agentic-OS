@@ -5,6 +5,20 @@ import { Send, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEndpoint } from '@/lib/useEndpoint';
 
+const SEED_BRIEFS = {
+  briefs: [
+    { role: 'CEO', name: 'Routing & decomposition', shipped: ['Routed 47 briefs across 6 empires', 'Decomposed 12 goals into 84 subtasks'], blockers: ['LLM tiebreak still rule-based'], top3: ['Approve Synaptive Q3 OKR', 'Sign off DI launch checklist', 'Review CRO retention spec'], accent: 'from-indigo-100/80 to-indigo-50/40 text-indigo-900' },
+    { role: 'CTO', name: 'Self-upgrade & infra', shipped: ['Patched vLLM :8001 OOM (max-model-len)', 'Refactored gateway retry loop'], blockers: ['Proposer/Reviewer/Applier loop still stub'], top3: ['Wire CTO recursive upgrade', 'Migrate Redis to AOF', 'Profile LoRA throughput'], accent: 'from-slate-100/80 to-slate-50/40 text-slate-900' },
+    { role: 'CMO', name: 'Brand · content · growth', shipped: ['Synaptive: 3 Shorts published, avg score 78', 'DI: 11 posts queued, 4 carousels approved'], blockers: ['Tastemaker rejecting 22% of audio cuts'], top3: ['Ship DI launch reel', 'Refresh LocalBiz cold email', 'Approve Q3 brand voice update'], accent: 'from-rose-100/80 to-rose-50/40 text-rose-900' },
+    { role: 'CIO', name: 'Intel & research', shipped: ['TrendScout flagged 6 rising topics (avg lift +34%)', 'RSS digest: 142 items → 9 briefs'], blockers: ['Competitor scan API rate-limited'], top3: ['Prioritise top trend → CMO brief', 'Add Reddit source to RSS', 'Score competitor catalog'], accent: 'from-sky-100/80 to-sky-50/40 text-sky-900' },
+    { role: 'CSO', name: 'Strategy', shipped: ['Drafted 30-day cash projection', 'Ranked empires by ROI/hour'], blockers: ['Need updated COGS from CRO'], top3: ['Lock empire focus order', 'Sign off LocalBiz expansion', 'Kill 1 underperformer'], accent: 'from-emerald-100/80 to-emerald-50/40 text-emerald-900' },
+    { role: 'CRO', name: 'Revenue ops', shipped: ['Freelance: $1,840 invoiced, 2 collected', 'Products: 14 Etsy sales, $312 net'], blockers: ['Stripe payout delay 2d on Synaptive'], top3: ['Push DI pre-launch list', 'Recover 4 churned LocalBiz', 'Re-price top 3 Gumroad SKUs'], accent: 'from-amber-100/80 to-amber-50/40 text-amber-900' },
+    { role: 'Creative', name: 'Brand voice gate', shipped: ['Approved 18/22 assets', 'Vetoed 4 (off-brand colour, weak hook)'], blockers: ['Designer queue 7 deep'], top3: ['Tighten Synaptive thumbnail style', 'Ship DI persona LoRA v7', 'Audit DI carousel templates'], accent: 'from-fuchsia-100/80 to-fuchsia-50/40 text-fuchsia-900' },
+    { role: 'Support', name: 'Customer success', shipped: ['Cleared 9 tickets (median 14m)', 'Refunded 2, upsold 1'], blockers: ['Knowledge base stale on DI'], top3: ['Refresh DI FAQ', 'Auto-tag tickets by empire', 'Wire Slack escalation'], accent: 'from-teal-100/80 to-teal-50/40 text-teal-900' },
+  ] as ExecBrief[],
+  backend: 'fallback' as const,
+};
+
 interface ExecBrief {
   role: string;
   name: string;
@@ -19,7 +33,7 @@ export function CSuiteStandup() {
   const { toast } = useToast();
   const { data } = useEndpoint<{ briefs: ExecBrief[]; backend: 'live' | 'fallback' }>(
     '/api/c-suite/standup',
-    { intervalMs: 30_000 },
+    { intervalMs: 30_000, initialData: SEED_BRIEFS },
   );
   const briefs = data?.briefs ?? [];
   const isLive = data?.backend === 'live';
