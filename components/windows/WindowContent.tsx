@@ -29,6 +29,9 @@ import { OvernightReel } from './production/OvernightReel';
 import { DigitalGoodsGallery } from './production/DigitalGoodsGallery';
 import { PipelineHeatmap } from './production/PipelineHeatmap';
 import { DeadLetterInbox } from './production/DeadLetterInbox';
+import { ApprovalQueue } from './quality/ApprovalQueue';
+import { TastemakerHistogram } from './quality/TastemakerHistogram';
+import { BrandDriftMonitor } from './quality/BrandDriftMonitor';
 
 interface WindowContentProps {
   content: string;
@@ -70,6 +73,12 @@ export function WindowContent({ content, title }: WindowContentProps) {
         return <PipelineHeatmap />;
       case 'dead-letter':
         return <DeadLetterInbox />;
+      case 'approval-queue':
+        return <ApprovalQueue />;
+      case 'tastemaker-histogram':
+        return <TastemakerHistogram />;
+      case 'brand-drift':
+        return <BrandDriftMonitor />;
       case 'kanban':
         return <KanbanWindow />;
       case 'workflows':

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, PanInfo } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle, CheckSquare, BarChart3, Gauge } from 'lucide-react';
 import { WindowContent } from '@/components/windows/WindowContent';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -71,6 +71,7 @@ export default function Desktop() {
     'Dashboard': true,
     'Money': true,
     'Production': true,
+    'Quality': true,
     'Projects': true,
     'Development': true,
     'Collaboration': false,
@@ -165,6 +166,11 @@ export default function Desktop() {
       { icon: ImageIcon, label: 'Digital Goods', active: false, href: '#', content: 'digital-goods' },
       { icon: GitBranch, label: 'Pipeline Heatmap', active: false, href: '#', content: 'pipeline-heatmap' },
       { icon: AlertTriangle, label: 'Dead-Letter Inbox', active: false, href: '#', content: 'dead-letter' },
+    ],
+    'Quality': [
+      { icon: CheckSquare, label: 'Approval Queue', active: false, href: '#', content: 'approval-queue' },
+      { icon: BarChart3, label: 'Tastemaker Scores', active: false, href: '#', content: 'tastemaker-histogram' },
+      { icon: Gauge, label: 'Brand Drift', active: false, href: '#', content: 'brand-drift' },
     ],
     'Projects': [
       { icon: FileText, label: 'Task Ledger', active: false, href: '#', content: 'task-ledger' },
