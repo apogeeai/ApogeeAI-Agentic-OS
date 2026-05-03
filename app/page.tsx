@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion, PanInfo } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle, CheckSquare, BarChart3, Gauge, Radar, TrendingDown, Film, Network, Briefcase } from 'lucide-react';
 import { WindowContent } from '@/components/windows/WindowContent';
+import { WindowErrorBoundary } from '@/components/windows/WindowErrorBoundary';
 import { Toaster } from '@/components/ui/toaster';
 
 const DOCK_RESERVE = 80;
@@ -68,7 +69,6 @@ export default function Desktop() {
   const [greenNoiseEnabled, setGreenNoiseEnabled] = useState(false);
   const greenNoiseRef = useRef<HTMLAudioElement | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    'Dashboard': false,
     'Money': false,
     'Production': false,
     'Quality': false,
@@ -149,9 +149,6 @@ export default function Desktop() {
   };
 
   const sidebarSections = {
-    'Dashboard': [
-      { icon: Monitor, label: 'Desktop', active: true, href: '/' },
-    ],
     'Money': [
       { icon: DollarSign, label: 'Revenue Ticker', active: false, href: '#', content: 'revenue-ticker' },
       { icon: TrendingUp, label: 'Empire P&L', active: false, href: '#', content: 'empire-pnl' },
@@ -275,8 +272,14 @@ export default function Desktop() {
     return { width: finalWidth, height: finalHeight, slotPosition, slotsPerZone };
   };
 
-  const openWindow = (item: typeof sidebarSections['Dashboard'][0]) => {
+  const openWindow = (item: typeof sidebarSections['Money'][0]) => {
     if (item.href !== '#') return;
+    const owningSection = (Object.keys(sidebarSections) as Array<keyof typeof sidebarSections>).find(
+      (s) => sidebarSections[s].some((it) => 'content' in it && it.content === item.content),
+    );
+    if (owningSection) {
+      setExpandedSections((prev) => ({ ...prev, [owningSection as string]: true }));
+    }
 
     const existingWindow = windows.find(w => w.content === item.content);
     if (existingWindow) {
@@ -901,7 +904,9 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
           background: 'rgba(255, 255, 255, 0.1)',
         }}
       >
-        <WindowContent content={window.content} title={window.title} />
+        <WindowErrorBoundary title={window.title}>
+          <WindowContent content={window.content} title={window.title} />
+        </WindowErrorBoundary>
       </div>
 
       {!window.isMaximized && (
