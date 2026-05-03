@@ -280,18 +280,53 @@ export default function Desktop() {
       return;
     }
 
-    const visibleCount = windows.filter(w => !w.isMinimized).length;
-    const { width, height, slotPosition } = computeGridLayout(visibleCount + 1);
-    const { x, y } = slotPosition(visibleCount);
+    const sidebarWidth = sidebarOpen ? 256 : 64;
+    const CASCADE_STEP = 40;
+    const TOP_RESERVE = 20;
+    const DEFAULT_WIDTH = 720;
+    const DEFAULT_HEIGHT = 480;
+
+    const visibleWindows = windows.filter(w => !w.isMinimized);
+    const last = visibleWindows[visibleWindows.length - 1];
+
+    const baseSize = clampWindowToViewport(
+      sidebarWidth,
+      TOP_RESERVE,
+      last ? last.width : DEFAULT_WIDTH,
+      last ? last.height : DEFAULT_HEIGHT,
+      sidebarWidth,
+    );
+
+    let rawX: number;
+    let rawY: number;
+    if (last) {
+      rawX = last.x + CASCADE_STEP;
+      rawY = last.y + CASCADE_STEP;
+      const maxX = window.innerWidth - baseSize.width;
+      const maxY = window.innerHeight - baseSize.height;
+      if (rawX > maxX || rawY > maxY) {
+        const overflowSteps = Math.max(
+          0,
+          Math.ceil(Math.max(rawX - maxX, rawY - maxY) / CASCADE_STEP),
+        );
+        rawX = sidebarWidth + (overflowSteps % 6) * CASCADE_STEP;
+        rawY = TOP_RESERVE + (overflowSteps % 6) * CASCADE_STEP;
+      }
+    } else {
+      rawX = sidebarWidth;
+      rawY = TOP_RESERVE;
+    }
+
+    const placed = clampWindowToViewport(rawX, rawY, baseSize.width, baseSize.height, sidebarWidth);
 
     const newWindow: WindowState = {
       id: `window-${Date.now()}`,
       title: item.label,
       icon: item.icon,
-      x,
-      y,
-      width,
-      height,
+      x: placed.x,
+      y: placed.y,
+      width: placed.width,
+      height: placed.height,
       isMinimized: false,
       isMaximized: false,
       zIndex: highestZIndex + 1,
