@@ -283,18 +283,27 @@ export default function Desktop() {
     const sidebarWidth = sidebarOpen ? 256 : 64;
     const CASCADE_STEP = 40;
     const TOP_RESERVE = 20;
-    const DEFAULT_WIDTH = 720;
-    const DEFAULT_HEIGHT = 480;
-
-    const visibleWindows = windows.filter(w => !w.isMinimized);
-    const last = visibleWindows[visibleWindows.length - 1];
+    const DEFAULT_WIDTH = 880;
+    const DEFAULT_HEIGHT = 520;
+    const MAX_OPEN_TOP_Y = 1200;
+    const DOCK_RESERVE = 80;
 
     const baseSize = clampWindowToViewport(
       sidebarWidth,
       TOP_RESERVE,
-      last ? last.width : DEFAULT_WIDTH,
-      last ? last.height : DEFAULT_HEIGHT,
+      DEFAULT_WIDTH,
+      DEFAULT_HEIGHT,
       sidebarWidth,
+    );
+
+    const visibleWindows = windows.filter(w => !w.isMinimized);
+    const last = visibleWindows[visibleWindows.length - 1];
+
+    const startX = sidebarWidth;
+    const startY = TOP_RESERVE;
+    const bottomLimit = Math.max(
+      startY + baseSize.height,
+      window.innerHeight - DOCK_RESERVE,
     );
 
     let rawX: number;
@@ -302,19 +311,16 @@ export default function Desktop() {
     if (last) {
       rawX = last.x + CASCADE_STEP;
       rawY = last.y + CASCADE_STEP;
-      const maxX = window.innerWidth - baseSize.width;
-      const maxY = window.innerHeight - baseSize.height;
-      if (rawX > maxX || rawY > maxY) {
-        const overflowSteps = Math.max(
-          0,
-          Math.ceil(Math.max(rawX - maxX, rawY - maxY) / CASCADE_STEP),
-        );
-        rawX = sidebarWidth + (overflowSteps % 6) * CASCADE_STEP;
-        rawY = TOP_RESERVE + (overflowSteps % 6) * CASCADE_STEP;
+      const wouldExceedTopCap = rawY > MAX_OPEN_TOP_Y;
+      const wouldExceedBottom = rawY + baseSize.height > bottomLimit;
+      const wouldExceedRight = rawX + baseSize.width > window.innerWidth;
+      if (wouldExceedTopCap || wouldExceedBottom || wouldExceedRight) {
+        rawX = startX;
+        rawY = startY;
       }
     } else {
-      rawX = sidebarWidth;
-      rawY = TOP_RESERVE;
+      rawX = startX;
+      rawY = startY;
     }
 
     const placed = clampWindowToViewport(rawX, rawY, baseSize.width, baseSize.height, sidebarWidth);
