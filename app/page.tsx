@@ -18,12 +18,14 @@ function clampWindowToViewport(
 ) {
   const vw = viewportWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1280);
   const vh = viewportHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 800);
-  const MIN_W = 240;
-  const MIN_H = 160;
-  const availW = Math.max(MIN_W, vw - sidebarWidth);
-  const availH = Math.max(MIN_H, vh);
-  const clampedW = Math.max(MIN_W, Math.min(width, availW));
-  const clampedH = Math.max(MIN_H, Math.min(height, availH));
+  const PREF_MIN_W = 240;
+  const PREF_MIN_H = 160;
+  const availW = Math.max(1, vw - sidebarWidth);
+  const availH = Math.max(1, vh);
+  const targetMinW = Math.min(PREF_MIN_W, availW);
+  const targetMinH = Math.min(PREF_MIN_H, availH);
+  const clampedW = Math.max(targetMinW, Math.min(width, availW));
+  const clampedH = Math.max(targetMinH, Math.min(height, availH));
   const maxX = Math.max(sidebarWidth, vw - clampedW);
   const maxY = Math.max(0, vh - clampedH);
   const clampedX = Math.min(Math.max(sidebarWidth, x), maxX);
