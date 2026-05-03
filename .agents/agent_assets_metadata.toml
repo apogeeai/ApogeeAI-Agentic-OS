@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "CwcTtsYoU3IrlDV1m-X4t"
+uri = "file://app/icon.png"
+type = "image"
+title = "founder os icon"
