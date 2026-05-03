@@ -38,8 +38,8 @@ function clampWindowToViewport(
   const vw = viewportWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1280);
   const rawVh = viewportHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 800);
   const vh = Math.max(1, rawVh - bottomReserve);
-  const PREF_MIN_W = 240;
-  const PREF_MIN_H = 160;
+  const PREF_MIN_W = 600;
+  const PREF_MIN_H = 200;
   const availW = Math.max(1, vw - sidebarWidth);
   const availH = Math.max(1, vh);
   const targetMinW = Math.min(PREF_MIN_W, availW);
@@ -358,8 +358,8 @@ export default function Desktop() {
     const TOP_RESERVE = 20;
     const SIDE_PAD = 16;
     const GAP = 16;
-    const MIN_WINDOW_WIDTH = 240;
-    const MIN_WINDOW_HEIGHT = 160;
+    const MIN_WINDOW_WIDTH = 600;
+    const MIN_WINDOW_HEIGHT = 200;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
