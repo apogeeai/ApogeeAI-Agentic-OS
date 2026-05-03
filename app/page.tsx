@@ -74,11 +74,10 @@ export default function Desktop() {
     'Quality': true,
     'Intelligence': true,
     'Creative': true,
-    'Health': true,
     'Projects': true,
     'Development': true,
     'Collaboration': false,
-    'System': false,
+    'System': true,
   });
 
   const backgrounds = [
@@ -185,11 +184,6 @@ export default function Desktop() {
       { icon: Brain, label: 'LoRA Trainer', active: false, href: '#', content: 'lora-trainer' },
       { icon: Film, label: 'Video Motion Lab', active: false, href: '#', content: 'video-motion-lab' },
     ],
-    'Health': [
-      { icon: Network, label: 'Agent Swarm Grid', active: false, href: '#', content: 'agent-swarm-grid' },
-      { icon: Cpu, label: 'GPU Telemetry', active: false, href: '#', content: 'gpu-telemetry' },
-      { icon: Briefcase, label: 'C-Suite Standup', active: false, href: '#', content: 'c-suite-standup' },
-    ],
     'Projects': [
       { icon: FileText, label: 'Task Ledger', active: false, href: '#', content: 'task-ledger' },
       { icon: Inbox, label: 'Approval Inbox', active: false, href: '#', content: 'approval-inbox' },
@@ -211,6 +205,9 @@ export default function Desktop() {
       { icon: Folder, label: 'Files', active: false, href: '#', content: 'files' },
     ],
     'System': [
+      { icon: Network, label: 'Agent Swarm Grid', active: false, href: '#', content: 'agent-swarm-grid' },
+      { icon: Cpu, label: 'GPU Telemetry', active: false, href: '#', content: 'gpu-telemetry' },
+      { icon: Briefcase, label: 'C-Suite Standup', active: false, href: '#', content: 'c-suite-standup' },
       { icon: Workflow, label: 'Workflows', active: false, href: '#', content: 'workflows' },
       { icon: Brain, label: 'AI Models', active: false, href: '#', content: 'ai-models' },
       { icon: Cpu, label: 'GPU Monitor', active: false, href: '#', content: 'gpu-monitor' },

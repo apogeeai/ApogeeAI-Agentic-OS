@@ -87,9 +87,24 @@ export function CSuiteStandup() {
   const send = () => {
     const text = message.trim();
     if (!text) return;
-    // TODO: POST /api/c-suite-brief { text } -> Redis XADD c-suite.briefs
-    toast({ title: 'Brief sent to CEO', description: text.length > 80 ? `${text.slice(0, 80)}…` : text });
     setMessage('');
+    // Stub POST -> /api/c-suite-brief; production: XADD c-suite.briefs in Redis.
+    fetch('/api/c-suite-brief', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+      .then((r) => r.json().catch(() => ({ ok: r.ok })))
+      .then((data) => {
+        if (data?.ok) {
+          toast({ title: 'Brief sent to CEO', description: text.length > 80 ? `${text.slice(0, 80)}…` : text });
+        } else {
+          toast({ title: 'Brief failed', description: data?.error || 'Unknown error' });
+        }
+      })
+      .catch(() => {
+        toast({ title: 'Brief failed', description: 'Network error' });
+      });
   };
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
