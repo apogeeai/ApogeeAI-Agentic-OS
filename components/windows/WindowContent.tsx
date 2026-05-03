@@ -25,6 +25,10 @@ import { RevenueTicker } from './money/RevenueTicker';
 import { EmpirePnL } from './money/EmpirePnL';
 import { CostProfitLedger } from './money/CostProfitLedger';
 import { MakeMoneyButtons } from './money/MakeMoneyButtons';
+import { OvernightReel } from './production/OvernightReel';
+import { DigitalGoodsGallery } from './production/DigitalGoodsGallery';
+import { PipelineHeatmap } from './production/PipelineHeatmap';
+import { DeadLetterInbox } from './production/DeadLetterInbox';
 
 interface WindowContentProps {
   content: string;
@@ -58,6 +62,14 @@ export function WindowContent({ content, title }: WindowContentProps) {
         return <CostProfitLedger />;
       case 'make-money':
         return <MakeMoneyButtons />;
+      case 'overnight-reel':
+        return <OvernightReel />;
+      case 'digital-goods':
+        return <DigitalGoodsGallery />;
+      case 'pipeline-heatmap':
+        return <PipelineHeatmap />;
+      case 'dead-letter':
+        return <DeadLetterInbox />;
       case 'kanban':
         return <KanbanWindow />;
       case 'workflows':

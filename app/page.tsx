@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, PanInfo } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle } from 'lucide-react';
 import { WindowContent } from '@/components/windows/WindowContent';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -70,6 +70,7 @@ export default function Desktop() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'Dashboard': true,
     'Money': true,
+    'Production': true,
     'Projects': true,
     'Development': true,
     'Collaboration': false,
@@ -158,6 +159,12 @@ export default function Desktop() {
       { icon: TrendingUp, label: 'Empire P&L', active: false, href: '#', content: 'empire-pnl' },
       { icon: Receipt, label: 'Cost & Profit', active: false, href: '#', content: 'cost-profit' },
       { icon: Zap, label: 'Make Money', active: false, href: '#', content: 'make-money' },
+    ],
+    'Production': [
+      { icon: Sparkles, label: 'Built Overnight', active: false, href: '#', content: 'overnight-reel' },
+      { icon: ImageIcon, label: 'Digital Goods', active: false, href: '#', content: 'digital-goods' },
+      { icon: GitBranch, label: 'Pipeline Heatmap', active: false, href: '#', content: 'pipeline-heatmap' },
+      { icon: AlertTriangle, label: 'Dead-Letter Inbox', active: false, href: '#', content: 'dead-letter' },
     ],
     'Projects': [
       { icon: FileText, label: 'Task Ledger', active: false, href: '#', content: 'task-ledger' },
