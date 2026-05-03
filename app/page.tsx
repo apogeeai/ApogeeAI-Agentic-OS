@@ -180,33 +180,49 @@ export default function Desktop() {
 
     const sidebarWidth = sidebarOpen ? 256 : 64;
     const TOP_RESERVE = 20;
+    const SIDE_PAD = 16;
     const GAP = 16;
+    const MIN_WINDOW_WIDTH = 320;
+    const MIN_WINDOW_HEIGHT = 240;
+    const TARGET_WINDOW_WIDTH = 480;
+    const TARGET_WINDOW_HEIGHT = 360;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    const topZoneHeight = Math.max(220, viewportHeight * 0.4);
-    const availableWidth = Math.max(400, viewportWidth - sidebarWidth - GAP);
-    const availableHeight = Math.max(200, topZoneHeight - TOP_RESERVE);
+    const topZoneHeight = Math.max(MIN_WINDOW_HEIGHT + TOP_RESERVE, viewportHeight * 0.4);
+    const availableWidth = Math.max(MIN_WINDOW_WIDTH, viewportWidth - sidebarWidth - SIDE_PAD);
+    const availableHeight = Math.max(MIN_WINDOW_HEIGHT, topZoneHeight - TOP_RESERVE);
 
+    const cols = Math.max(1, Math.floor((availableWidth + GAP) / (MIN_WINDOW_WIDTH + GAP)));
+    const rawWindowWidth = (availableWidth - GAP * (cols - 1)) / cols;
+    const windowWidth = Math.max(MIN_WINDOW_WIDTH, Math.min(TARGET_WINDOW_WIDTH, rawWindowWidth));
+
+    const rows = Math.max(1, Math.floor((availableHeight + GAP) / (MIN_WINDOW_HEIGHT + GAP)));
+    const rawWindowHeight = (availableHeight - GAP * (rows - 1)) / rows;
+    const windowHeight = Math.max(MIN_WINDOW_HEIGHT, Math.min(TARGET_WINDOW_HEIGHT, rawWindowHeight));
+
+    const slotsPerZone = Math.max(1, cols * rows);
     const visibleCount = windows.filter(w => !w.isMinimized).length;
-    const slotsPerRow = Math.max(1, Math.min(4, visibleCount + 1));
-    const rawWindowWidth = (availableWidth - GAP * (slotsPerRow - 1)) / slotsPerRow;
-    const windowWidth = Math.max(360, Math.min(800, rawWindowWidth));
-    const windowHeight = Math.min(500, availableHeight);
+    const slotIndex = visibleCount % slotsPerZone;
+    const col = slotIndex % cols;
+    const row = Math.floor(slotIndex / cols);
 
-    const slotIndex = visibleCount % slotsPerRow;
-    const clampedX = snapToGrid(sidebarWidth + slotIndex * (windowWidth + GAP));
-    const clampedY = snapToGrid(TOP_RESERVE);
+    const rawX = sidebarWidth + col * (windowWidth + GAP);
+    const rawY = TOP_RESERVE + row * (windowHeight + GAP);
+    const maxX = Math.max(sidebarWidth, viewportWidth - windowWidth);
+    const maxY = Math.max(TOP_RESERVE, viewportHeight - windowHeight);
+    const finalX = snapToGrid(Math.min(Math.max(sidebarWidth, rawX), maxX));
+    const finalY = snapToGrid(Math.min(Math.max(TOP_RESERVE, rawY), maxY));
 
     const newWindow: WindowState = {
       id: `window-${Date.now()}`,
       title: item.label,
       icon: item.icon,
-      x: snapToGrid(clampedX),
-      y: snapToGrid(clampedY),
-      width: windowWidth,
-      height: windowHeight,
+      x: finalX,
+      y: finalY,
+      width: Math.round(windowWidth),
+      height: Math.round(windowHeight),
       isMinimized: false,
       isMaximized: false,
       zIndex: highestZIndex + 1,
