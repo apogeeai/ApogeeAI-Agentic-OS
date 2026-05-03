@@ -64,7 +64,7 @@ export function DigitalGoodsGallery() {
                     onClick={() => act(g.id, 'ship')}
                     className="flex-1 flex items-center justify-center gap-1 text-[11px] font-bold py-1.5 rounded bg-emerald-500/90 text-white hover:bg-emerald-600"
                   >
-                    <Check className="w-3 h-3" /> Ship
+                    <Check className="w-3 h-3" /> Approve &amp; Ship
                   </button>
                   <button
                     onClick={() => act(g.id, 'kill')}
