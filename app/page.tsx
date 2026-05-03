@@ -178,30 +178,38 @@ export default function Desktop() {
       return;
     }
 
-    const windowWidth = 800;
-    const windowHeight = 500;
     const sidebarWidth = sidebarOpen ? 256 : 64;
+    const BOTTOM_RESERVE = 100;
+    const TOP_RESERVE = 0;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    const availableWidth = viewportWidth - sidebarWidth;
-    const availableHeight = viewportHeight;
+    const availableWidth = Math.max(400, viewportWidth - sidebarWidth - 16);
+    const availableHeight = Math.max(300, viewportHeight - TOP_RESERVE - BOTTOM_RESERVE);
+
+    const windowWidth = Math.min(800, availableWidth);
+    const windowHeight = Math.min(500, availableHeight);
 
     const centerX = sidebarWidth + (availableWidth - windowWidth) / 2;
-    const centerY = (availableHeight - windowHeight) / 2;
+    const centerY = TOP_RESERVE + (availableHeight - windowHeight) / 2;
 
     const CASCADE_OFFSET = 30;
     const windowCount = windows.filter(w => !w.isMinimized).length;
     const offsetX = (windowCount * CASCADE_OFFSET) % 150;
     const offsetY = (windowCount * CASCADE_OFFSET) % 120;
 
+    const maxX = viewportWidth - windowWidth;
+    const maxY = viewportHeight - windowHeight - BOTTOM_RESERVE;
+    const clampedX = Math.min(Math.max(sidebarWidth, centerX + offsetX), maxX);
+    const clampedY = Math.min(Math.max(TOP_RESERVE, centerY + offsetY), Math.max(TOP_RESERVE, maxY));
+
     const newWindow: WindowState = {
       id: `window-${Date.now()}`,
       title: item.label,
       icon: item.icon,
-      x: snapToGrid(Math.max(sidebarWidth, centerX + offsetX)),
-      y: snapToGrid(Math.max(0, centerY + offsetY)),
+      x: snapToGrid(clampedX),
+      y: snapToGrid(clampedY),
       width: windowWidth,
       height: windowHeight,
       isMinimized: false,
