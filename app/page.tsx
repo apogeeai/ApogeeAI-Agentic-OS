@@ -33,7 +33,7 @@ export default function Desktop() {
   const [highestZIndex, setHighestZIndex] = useState(1);
   const [minimizedWindows, setMinimizedWindows] = useState<WindowState[]>([]);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; windowId: string } | null>(null);
   const [greenNoiseEnabled, setGreenNoiseEnabled] = useState(false);
   const greenNoiseRef = useRef<HTMLAudioElement | null>(null);
@@ -64,6 +64,7 @@ export default function Desktop() {
   ];
 
   useEffect(() => {
+    setCurrentTime(new Date());
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -392,8 +393,8 @@ export default function Desktop() {
 
       <div className="fixed top-0 right-4 z-50 bg-white/10 backdrop-blur-xl border border-white/20 rounded-b-2xl px-6 py-3 shadow-lg">
         <div className="text-white text-center">
-          <div className="text-lg font-semibold">{formatTime(currentTime)}</div>
-          <div className="text-xs text-white/80">{formatDate(currentTime)}</div>
+          <div className="text-lg font-semibold" suppressHydrationWarning>{currentTime ? formatTime(currentTime) : '--:-- --'}</div>
+          <div className="text-xs text-white/80" suppressHydrationWarning>{currentTime ? formatDate(currentTime) : ''}</div>
         </div>
       </div>
 

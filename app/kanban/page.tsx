@@ -25,7 +25,7 @@ export default function KanbanBoard() {
   const [draggedTask, setDraggedTask] = useState<KanbanTask | null>(null);
   const [draggedOverTask, setDraggedOverTask] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -39,6 +39,7 @@ export default function KanbanBoard() {
 
   useEffect(() => {
     fetchTasks();
+    setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
