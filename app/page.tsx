@@ -283,38 +283,39 @@ export default function Desktop() {
     const sidebarWidth = sidebarOpen ? 256 : 64;
     const CASCADE_STEP = 40;
     const TOP_RESERVE = 20;
-    const DEFAULT_WIDTH = 880;
-    const DEFAULT_HEIGHT = 520;
-    const MAX_OPEN_TOP_Y = 1200;
     const DOCK_RESERVE = 80;
+    const TARGET_CASCADE_COUNT = 10;
+    const PREFERRED_WIDTH = 880;
+    const PREFERRED_HEIGHT = 520;
 
-    const baseSize = clampWindowToViewport(
-      sidebarWidth,
-      TOP_RESERVE,
-      DEFAULT_WIDTH,
-      DEFAULT_HEIGHT,
-      sidebarWidth,
-    );
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const startX = sidebarWidth;
+    const startY = TOP_RESERVE;
+
+    const heightBudget = vh - DOCK_RESERVE - startY - (TARGET_CASCADE_COUNT - 1) * CASCADE_STEP;
+    const widthBudget = vw - startX - (TARGET_CASCADE_COUNT - 1) * CASCADE_STEP;
+    const targetHeight = Math.max(160, Math.min(PREFERRED_HEIGHT, heightBudget));
+    const targetWidth = Math.max(240, Math.min(PREFERRED_WIDTH, widthBudget));
+    const baseSize = clampWindowToViewport(startX, startY, targetWidth, targetHeight, sidebarWidth);
+
+    const bottomLimit = vh - DOCK_RESERVE;
+    const rightLimit = vw;
 
     const visibleWindows = windows.filter(w => !w.isMinimized);
     const last = visibleWindows[visibleWindows.length - 1];
 
-    const startX = sidebarWidth;
-    const startY = TOP_RESERVE;
-    const bottomLimit = Math.max(
-      startY + baseSize.height,
-      window.innerHeight - DOCK_RESERVE,
-    );
-
     let rawX: number;
     let rawY: number;
     if (last) {
-      rawX = last.x + CASCADE_STEP;
-      rawY = last.y + CASCADE_STEP;
-      const wouldExceedTopCap = rawY > MAX_OPEN_TOP_Y;
-      const wouldExceedBottom = rawY + baseSize.height > bottomLimit;
-      const wouldExceedRight = rawX + baseSize.width > window.innerWidth;
-      if (wouldExceedTopCap || wouldExceedBottom || wouldExceedRight) {
+      const candidateX = last.x + CASCADE_STEP;
+      const candidateY = last.y + CASCADE_STEP;
+      const fitsBottom = candidateY + baseSize.height <= bottomLimit;
+      const fitsRight = candidateX + baseSize.width <= rightLimit;
+      if (fitsBottom && fitsRight) {
+        rawX = candidateX;
+        rawY = candidateY;
+      } else {
         rawX = startX;
         rawY = startY;
       }
