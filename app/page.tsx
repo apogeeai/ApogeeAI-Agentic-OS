@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, C
 import { WindowContent } from '@/components/windows/WindowContent';
 import { Toaster } from '@/components/ui/toaster';
 
+const DOCK_RESERVE = 80;
+
 function clampWindowToViewport(
   x: number,
   y: number,
@@ -15,9 +17,11 @@ function clampWindowToViewport(
   sidebarWidth: number,
   viewportWidth?: number,
   viewportHeight?: number,
+  bottomReserve: number = 0,
 ) {
   const vw = viewportWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1280);
-  const vh = viewportHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 800);
+  const rawVh = viewportHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 800);
+  const vh = Math.max(1, rawVh - bottomReserve);
   const PREF_MIN_W = 240;
   const PREF_MIN_H = 160;
   const availW = Math.max(1, vw - sidebarWidth);
@@ -204,7 +208,7 @@ export default function Desktop() {
             height: window.innerHeight,
           };
         }
-        const c = clampWindowToViewport(w.x, w.y, w.width, w.height, sidebarWidth);
+        const c = clampWindowToViewport(w.x, w.y, w.width, w.height, sidebarWidth, undefined, undefined, DOCK_RESERVE);
         if (c.x === w.x && c.y === w.y && c.width === w.width && c.height === w.height) return w;
         return { ...w, x: c.x, y: c.y, width: c.width, height: c.height };
       }));
@@ -283,7 +287,6 @@ export default function Desktop() {
     const sidebarWidth = sidebarOpen ? 256 : 64;
     const CASCADE_STEP = 40;
     const TOP_RESERVE = 20;
-    const DOCK_RESERVE = 80;
     const TARGET_CASCADE_COUNT = 10;
     const PREFERRED_WIDTH = 880;
     const PREFERRED_HEIGHT = 520;
@@ -297,51 +300,62 @@ export default function Desktop() {
     const widthBudget = vw - startX - (TARGET_CASCADE_COUNT - 1) * CASCADE_STEP;
     const targetHeight = Math.max(160, Math.min(PREFERRED_HEIGHT, heightBudget));
     const targetWidth = Math.max(240, Math.min(PREFERRED_WIDTH, widthBudget));
-    const baseSize = clampWindowToViewport(startX, startY, targetWidth, targetHeight, sidebarWidth);
+    const baseSize = clampWindowToViewport(startX, startY, targetWidth, targetHeight, sidebarWidth, vw, vh, DOCK_RESERVE);
 
     const bottomLimit = vh - DOCK_RESERVE;
     const rightLimit = vw;
 
-    const visibleWindows = windows.filter(w => !w.isMinimized);
-    const last = visibleWindows[visibleWindows.length - 1];
+    const newId = `window-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const nextZ = highestZIndex + 1;
 
-    let rawX: number;
-    let rawY: number;
-    if (last) {
-      const candidateX = last.x + CASCADE_STEP;
-      const candidateY = last.y + CASCADE_STEP;
-      const fitsBottom = candidateY + baseSize.height <= bottomLimit;
-      const fitsRight = candidateX + baseSize.width <= rightLimit;
-      if (fitsBottom && fitsRight) {
-        rawX = candidateX;
-        rawY = candidateY;
+    setWindows(prev => {
+      const visibleWindows = prev.filter(w => !w.isMinimized);
+      const last = visibleWindows[visibleWindows.length - 1];
+
+      let rawX: number;
+      let rawY: number;
+      if (last) {
+        const candidateX = last.x + CASCADE_STEP;
+        const candidateY = last.y + CASCADE_STEP;
+        const fitsBottom = candidateY + baseSize.height <= bottomLimit;
+        const fitsRight = candidateX + baseSize.width <= rightLimit;
+        if (fitsBottom && fitsRight) {
+          rawX = candidateX;
+          rawY = candidateY;
+        } else {
+          rawX = startX;
+          rawY = startY;
+        }
       } else {
         rawX = startX;
         rawY = startY;
       }
-    } else {
-      rawX = startX;
-      rawY = startY;
-    }
 
-    const placed = clampWindowToViewport(rawX, rawY, baseSize.width, baseSize.height, sidebarWidth);
+      let placed = clampWindowToViewport(rawX, rawY, baseSize.width, baseSize.height, sidebarWidth, vw, vh, DOCK_RESERVE);
 
-    const newWindow: WindowState = {
-      id: `window-${Date.now()}`,
-      title: item.label,
-      icon: item.icon,
-      x: placed.x,
-      y: placed.y,
-      width: placed.width,
-      height: placed.height,
-      isMinimized: false,
-      isMaximized: false,
-      zIndex: highestZIndex + 1,
-      content: item.content || 'default',
-    };
+      if (placed.y + placed.height > bottomLimit || placed.x + placed.width > rightLimit) {
+        const safeWidth = Math.min(placed.width, rightLimit - startX);
+        const safeHeight = Math.min(placed.height, bottomLimit - startY);
+        placed = clampWindowToViewport(startX, startY, safeWidth, safeHeight, sidebarWidth, vw, vh, DOCK_RESERVE);
+      }
 
-    setWindows([...windows, newWindow]);
-    setHighestZIndex(highestZIndex + 1);
+      const newWindow: WindowState = {
+        id: newId,
+        title: item.label,
+        icon: item.icon,
+        x: placed.x,
+        y: placed.y,
+        width: placed.width,
+        height: placed.height,
+        isMinimized: false,
+        isMaximized: false,
+        zIndex: nextZ,
+        content: item.content || 'default',
+      };
+
+      return [...prev, newWindow];
+    });
+    setHighestZIndex(nextZ);
   };
 
   const tidyWindows = () => {
@@ -391,7 +405,7 @@ export default function Desktop() {
           height: window.innerHeight,
         };
       }
-      const c = clampWindowToViewport(w.x, w.y, w.width, w.height, sidebarWidth);
+      const c = clampWindowToViewport(w.x, w.y, w.width, w.height, sidebarWidth, undefined, undefined, DOCK_RESERVE);
       return { ...w, isMinimized: false, zIndex: highestZIndex + 1, x: c.x, y: c.y, width: c.width, height: c.height };
     }));
     setHighestZIndex(highestZIndex + 1);
@@ -413,7 +427,7 @@ export default function Desktop() {
           const py = w.previousState?.y ?? w.y;
           const pw = w.previousState?.width ?? 800;
           const ph = w.previousState?.height ?? 500;
-          const c = clampWindowToViewport(px, py, pw, ph, sidebarWidth);
+          const c = clampWindowToViewport(px, py, pw, ph, sidebarWidth, undefined, undefined, DOCK_RESERVE);
           return {
             ...w,
             isMaximized: false,
@@ -759,7 +773,7 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
 
         const proposedWidth = snapToGrid(Math.max(400, resizeStart.width + deltaX));
         const proposedHeight = snapToGrid(Math.max(300, resizeStart.height + deltaY));
-        const c = clampWindowToViewport(window.x, window.y, proposedWidth, proposedHeight, sidebarWidth);
+        const c = clampWindowToViewport(window.x, window.y, proposedWidth, proposedHeight, sidebarWidth, undefined, undefined, DOCK_RESERVE);
 
         setWindows(windows.map(w =>
           w.id === window.id ? { ...w, width: c.width, height: c.height, x: c.x, y: c.y } : w
@@ -812,7 +826,7 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
         if (!window.isMaximized) {
           const rawX = snapToGrid(window.x + info.offset.x);
           const rawY = snapToGrid(window.y + info.offset.y);
-          const c = clampWindowToViewport(rawX, rawY, window.width, window.height, sidebarWidth);
+          const c = clampWindowToViewport(rawX, rawY, window.width, window.height, sidebarWidth, undefined, undefined, DOCK_RESERVE);
           setWindows(windows.map(w =>
             w.id === window.id ? { ...w, x: c.x, y: c.y, width: c.width, height: c.height } : w
           ));
