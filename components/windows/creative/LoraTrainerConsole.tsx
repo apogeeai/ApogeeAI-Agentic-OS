@@ -30,23 +30,38 @@ export function LoraTrainerConsole() {
   const [loraName, setLoraName] = useState('persona_v7');
   const inputRef = useRef<HTMLInputElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const createdUrlsRef = useRef<Set<string>>(new Set());
 
   const ingest = useCallback((files: FileList | File[]) => {
-    const arr = Array.from(files).slice(0, 10 - refs.length);
-    const next = arr.map((f) => ({
-      id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      url: URL.createObjectURL(f),
-      name: f.name,
-    }));
-    setRefs((prev) => [...prev, ...next].slice(0, 10));
-  }, [refs.length]);
+    setRefs((prev) => {
+      const remaining = 10 - prev.length;
+      if (remaining <= 0) return prev;
+      const arr = Array.from(files).slice(0, remaining);
+      const next = arr.map((f) => {
+        const url = URL.createObjectURL(f);
+        createdUrlsRef.current.add(url);
+        return {
+          id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          url,
+          name: f.name,
+        };
+      });
+      return [...prev, ...next].slice(0, 10);
+    });
+  }, []);
 
   useEffect(() => {
+    const created = createdUrlsRef.current;
     return () => {
-      refs.forEach((r) => URL.revokeObjectURL(r.url));
+      created.forEach((u) => URL.revokeObjectURL(u));
+      created.clear();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const revokeAll = () => {
+    createdUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    createdUrlsRef.current.clear();
+  };
 
   const start = () => {
     if (training || refs.length === 0) return;
@@ -83,12 +98,17 @@ export function LoraTrainerConsole() {
     setRefs([]);
     setLoss([]);
     setSamples([]);
+    revokeAll();
   };
 
   const removeRef = (id: string) => {
+    if (training) return;
     setRefs((prev) => {
       const target = prev.find((r) => r.id === id);
-      if (target) URL.revokeObjectURL(target.url);
+      if (target) {
+        URL.revokeObjectURL(target.url);
+        createdUrlsRef.current.delete(target.url);
+      }
       return prev.filter((r) => r.id !== id);
     });
   };
