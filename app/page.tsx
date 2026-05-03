@@ -1030,6 +1030,11 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
   const didMountRef = useRef(false);
   const gestureCleanupRef = useRef<(() => void) | null>(null);
   const [snapPreview, setSnapPreview] = useState<SnapTarget | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const sidebarWidthRef = useRef(sidebarWidth);
+  sidebarWidthRef.current = sidebarWidth;
+  const isMaximizedRef = useRef(win.isMaximized);
+  isMaximizedRef.current = win.isMaximized;
 
   useEffect(() => {
     return () => {
@@ -1059,13 +1064,15 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
     return () => { ax.stop(); ay.stop(); aw.stop(); ah.stop(); };
   }, [win.x, win.y, win.width, win.height, x, y, width, height]);
 
-  const startTitleDrag = (e: React.MouseEvent) => {
+  const startTitleDrag = (e: React.PointerEvent) => {
     if (win.isMaximized) return;
+    if (!e.isPrimary) return;
     if ((e.target as HTMLElement).closest('button')) return;
     e.preventDefault();
     // bringToFront handled by root motion.div onMouseDown via event bubbling.
     isGesturingRef.current = true;
 
+    const pointerId = e.pointerId;
     const startCX = e.clientX;
     const startCY = e.clientY;
     const baseX = x.get();
@@ -1075,7 +1082,9 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    document.body.style.cursor = 'grabbing';
+    if (e.pointerType === 'mouse') {
+      document.body.style.cursor = 'grabbing';
+    }
     document.body.style.userSelect = 'none';
 
     let raf = 0;
@@ -1088,7 +1097,8 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
       y.set(nextY);
       raf = 0;
     };
-    const onMove = (ev: MouseEvent) => {
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
       const c = clampWindowToViewport(baseX + (ev.clientX - startCX), baseY + (ev.clientY - startCY), w, h, sidebarWidth, vw, vh, DOCK_RESERVE);
       nextX = c.x;
       nextY = c.y;
@@ -1109,8 +1119,9 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
     };
     const teardown = (commit: boolean) => {
       if (raf) cancelAnimationFrame(raf);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
       document.removeEventListener('keydown', onKey);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -1145,20 +1156,26 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
         }
       }
     };
-    const onUp = () => teardown(true);
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      teardown(true);
+    };
     gestureCleanupRef.current = () => teardown(false);
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
     document.addEventListener('keydown', onKey);
   };
 
-  const startResize = (e: React.MouseEvent, dir: ResizeDir) => {
+  const startResize = (e: React.PointerEvent, dir: ResizeDir) => {
     if (win.isMaximized) return;
+    if (!e.isPrimary) return;
     e.preventDefault();
     e.stopPropagation();
     bringToFront(win.id);
     isGesturingRef.current = true;
 
+    const pointerId = e.pointerId;
     const startCX = e.clientX;
     const startCY = e.clientY;
     const baseX = x.get();
@@ -1169,7 +1186,9 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
     const vh = window.innerHeight;
     const bottomLimit = vh - DOCK_RESERVE;
 
-    document.body.style.cursor = RESIZE_CURSORS[dir];
+    if (e.pointerType === 'mouse') {
+      document.body.style.cursor = RESIZE_CURSORS[dir];
+    }
     document.body.style.userSelect = 'none';
 
     let raf = 0;
@@ -1178,7 +1197,8 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
       x.set(nx); y.set(ny); width.set(nw); height.set(nh);
       raf = 0;
     };
-    const onMove = (ev: MouseEvent) => {
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
       const dx = ev.clientX - startCX;
       const dy = ev.clientY - startCY;
       let newX = baseX, newY = baseY, newW = baseW, newH = baseH;
@@ -1205,8 +1225,9 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
     };
     const teardown = (commit: boolean) => {
       if (raf) cancelAnimationFrame(raf);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       isGesturingRef.current = false;
@@ -1217,11 +1238,103 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
         setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy, width: fw, height: fh } : w2));
       }
     };
-    const onUp = () => teardown(true);
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      teardown(true);
+    };
     gestureCleanupRef.current = () => teardown(false);
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
   };
+
+  // Pinch-to-resize from the window's center using two-finger touches.
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      if (isMaximizedRef.current) return;
+      e.preventDefault();
+      // Cancel any in-flight pointer drag/resize so pinch takes over cleanly.
+      if (gestureCleanupRef.current) {
+        gestureCleanupRef.current();
+        gestureCleanupRef.current = null;
+      }
+      bringToFront(win.id);
+      isGesturingRef.current = true;
+
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const startDist = Math.max(1, Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY));
+      const baseX = x.get();
+      const baseY = y.get();
+      const baseW = width.get();
+      const baseH = height.get();
+      const cx = baseX + baseW / 2;
+      const cy = baseY + baseH / 2;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const bottomLimit = vh - DOCK_RESERVE;
+      const sw = sidebarWidthRef.current;
+      const maxW = vw - sw;
+      const maxH = bottomLimit;
+
+      document.body.style.userSelect = 'none';
+
+      let raf = 0;
+      let nx = baseX, ny = baseY, nw = baseW, nh = baseH;
+      const flush = () => {
+        x.set(nx); y.set(ny); width.set(nw); height.set(nh);
+        raf = 0;
+      };
+
+      const onMove = (ev: TouchEvent) => {
+        if (ev.touches.length < 2) return;
+        ev.preventDefault();
+        const a = ev.touches[0];
+        const b = ev.touches[1];
+        const d = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+        const scale = d / startDist;
+        let newW = Math.max(MIN_WIN_W, Math.min(maxW, baseW * scale));
+        let newH = Math.max(MIN_WIN_H, Math.min(maxH, baseH * scale));
+        let newX = cx - newW / 2;
+        let newY = cy - newH / 2;
+        if (newX < sw) newX = sw;
+        if (newY < 0) newY = 0;
+        if (newX + newW > vw) newX = vw - newW;
+        if (newY + newH > bottomLimit) newY = bottomLimit - newH;
+        nx = newX; ny = newY; nw = newW; nh = newH;
+        if (!raf) raf = requestAnimationFrame(flush);
+      };
+
+      const teardown = (commit: boolean) => {
+        if (raf) cancelAnimationFrame(raf);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+        document.removeEventListener('touchcancel', onEnd);
+        document.body.style.userSelect = '';
+        isGesturingRef.current = false;
+        gestureCleanupRef.current = null;
+        if (commit) {
+          flush();
+          const fx = x.get(), fy = y.get(), fw = width.get(), fh = height.get();
+          setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy, width: fw, height: fh } : w2));
+        }
+      };
+      const onEnd = (ev: TouchEvent) => {
+        if (ev.touches.length < 2) teardown(true);
+      };
+      gestureCleanupRef.current = () => teardown(false);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+      document.addEventListener('touchcancel', onEnd);
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    return () => el.removeEventListener('touchstart', onTouchStart);
+  }, [win.id, x, y, width, height, bringToFront, setWindows]);
 
   if (win.isMinimized) return null;
 
@@ -1249,7 +1362,8 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
       />
     )}
     <motion.div
-      onMouseDown={() => bringToFront(win.id)}
+      ref={rootRef}
+      onPointerDown={() => bringToFront(win.id)}
       onContextMenu={(e) => onContextMenu(e, win.id)}
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -1272,7 +1386,7 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
       }}
     >
       <div
-        onMouseDown={startTitleDrag}
+        onPointerDown={startTitleDrag}
         onDoubleClick={(e) => {
           if (!(e.target as HTMLElement).closest('button')) onMaximize(win.id);
         }}
@@ -1280,6 +1394,7 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
         style={{
           background: 'rgba(255, 255, 255, 0.4)',
           borderBottom: '1px solid rgba(209, 213, 219, 0.3)',
+          touchAction: 'none',
         }}
       >
         <div className="flex items-center gap-2 window-controls">
@@ -1333,19 +1448,20 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
 
       {!win.isMaximized && (
         <>
-          <div onMouseDown={(e) => startResize(e, 'n')} className="absolute top-0 left-3 right-3 h-1.5 cursor-ns-resize z-30" />
-          <div onMouseDown={(e) => startResize(e, 's')} className="absolute bottom-0 left-3 right-3 h-1.5 cursor-ns-resize z-30" />
-          <div onMouseDown={(e) => startResize(e, 'w')} className="absolute left-0 top-3 bottom-3 w-1.5 cursor-ew-resize z-30" />
-          <div onMouseDown={(e) => startResize(e, 'e')} className="absolute right-0 top-3 bottom-3 w-1.5 cursor-ew-resize z-30" />
-          <div onMouseDown={(e) => startResize(e, 'nw')} className="absolute top-0 left-0 w-3 h-3 cursor-nwse-resize z-40" />
-          <div onMouseDown={(e) => startResize(e, 'ne')} className="absolute top-0 right-0 w-3 h-3 cursor-nesw-resize z-40" />
-          <div onMouseDown={(e) => startResize(e, 'sw')} className="absolute bottom-0 left-0 w-3 h-3 cursor-nesw-resize z-40" />
+          <div onPointerDown={(e) => startResize(e, 'n')} className="absolute top-0 left-3 right-3 h-1.5 cursor-ns-resize z-30" style={{ touchAction: 'none' }} />
+          <div onPointerDown={(e) => startResize(e, 's')} className="absolute bottom-0 left-3 right-3 h-1.5 cursor-ns-resize z-30" style={{ touchAction: 'none' }} />
+          <div onPointerDown={(e) => startResize(e, 'w')} className="absolute left-0 top-3 bottom-3 w-1.5 cursor-ew-resize z-30" style={{ touchAction: 'none' }} />
+          <div onPointerDown={(e) => startResize(e, 'e')} className="absolute right-0 top-3 bottom-3 w-1.5 cursor-ew-resize z-30" style={{ touchAction: 'none' }} />
+          <div onPointerDown={(e) => startResize(e, 'nw')} className="absolute top-0 left-0 w-3 h-3 cursor-nwse-resize z-40" style={{ touchAction: 'none' }} />
+          <div onPointerDown={(e) => startResize(e, 'ne')} className="absolute top-0 right-0 w-3 h-3 cursor-nesw-resize z-40" style={{ touchAction: 'none' }} />
+          <div onPointerDown={(e) => startResize(e, 'sw')} className="absolute bottom-0 left-0 w-3 h-3 cursor-nesw-resize z-40" style={{ touchAction: 'none' }} />
           <div
-            onMouseDown={(e) => startResize(e, 'se')}
+            onPointerDown={(e) => startResize(e, 'se')}
             className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-40"
             style={{
               background: 'linear-gradient(135deg, transparent 0%, transparent 55%, rgba(100,100,100,0.45) 55%, rgba(100,100,100,0.45) 100%)',
               borderBottomRightRadius: '0.75rem',
+              touchAction: 'none',
             }}
           />
         </>
