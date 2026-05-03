@@ -991,7 +991,7 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
     if (win.isMaximized) return;
     if ((e.target as HTMLElement).closest('button')) return;
     e.preventDefault();
-    bringToFront(win.id);
+    // bringToFront handled by root motion.div onMouseDown via event bubbling.
     isGesturingRef.current = true;
 
     const startCX = e.clientX;
