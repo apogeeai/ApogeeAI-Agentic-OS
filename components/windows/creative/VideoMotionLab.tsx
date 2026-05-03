@@ -87,7 +87,7 @@ export function VideoMotionLab() {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 @max-xs:grid-cols-1 gap-3">
         {(['pending', 'running', 'done'] as JobStatus[]).map((s) => (
           <div key={s} className="bg-white/40 backdrop-blur-sm rounded-xl border border-white/60 p-3 text-center">
             <div className="text-[10px] uppercase tracking-wider text-gray-600">{s}</div>

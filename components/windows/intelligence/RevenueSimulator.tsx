@@ -108,7 +108,7 @@ export function RevenueSimulator() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 @xs:grid-cols-3 gap-3">
         {[
           { label: '7-day', value: r7, color: 'from-blue-500 to-blue-600' },
           { label: '30-day', value: r30, color: 'from-emerald-500 to-emerald-600' },

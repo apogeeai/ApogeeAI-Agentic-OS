@@ -65,7 +65,7 @@ export function ChurnForecast() {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 @xs:grid-cols-3 gap-3">
         <div className="bg-white/40 backdrop-blur-sm rounded-xl border border-white/60 p-3">
           <div className="text-[10px] uppercase tracking-wider text-gray-600">Pipeline (expected MRR)</div>
           <div className="text-lg font-bold text-emerald-700">${totalPipeline.toFixed(0)}</div>
@@ -80,8 +80,8 @@ export function ChurnForecast() {
         </div>
       </div>
 
-      <div className="bg-white/40 backdrop-blur-sm rounded-xl border border-white/60 overflow-hidden">
-        <table className="w-full text-xs">
+      <div className="bg-white/40 backdrop-blur-sm rounded-xl border border-white/60 overflow-x-auto">
+        <table className="w-full text-xs min-w-[360px]">
           <thead className="bg-white/40 border-b border-white/60">
             <tr>
               <Th k="business" label="Business" />

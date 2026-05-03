@@ -135,7 +135,7 @@ export function ApprovalQueue() {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 @max-xs:grid-cols-1 gap-3">
         <div className="bg-emerald-100/60 rounded-lg p-2 border border-emerald-300/60 text-center">
           <div className="text-[10px] text-emerald-800 uppercase tracking-wider">Approved</div>
           <div className="text-xl font-bold text-gray-900">{stats.approved}</div>

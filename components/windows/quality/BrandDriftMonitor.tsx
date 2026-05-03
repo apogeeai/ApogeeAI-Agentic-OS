@@ -73,7 +73,7 @@ export function BrandDriftMonitor() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 @xs:grid-cols-2 @sm:grid-cols-3 gap-3">
         {drift.map((d) => {
           const isDrifting = d.similarity < d.threshold;
           return (

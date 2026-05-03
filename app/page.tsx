@@ -1188,7 +1188,7 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
       </div>
 
       <div
-        className="p-6 h-[calc(100%-40px)] overflow-auto relative z-20"
+        className="@container p-3 @sm:p-4 @md:p-6 h-[calc(100%-40px)] overflow-auto relative z-20"
         style={{
           background: 'rgba(255, 255, 255, 0.1)',
         }}

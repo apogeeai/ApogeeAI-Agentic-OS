@@ -85,16 +85,16 @@ export function AgentSwarmGrid() {
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
-        <div className={`${selected ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white/40 backdrop-blur-xl border border-white/60 rounded-xl p-4 overflow-auto`}>
+      <div className="flex-1 grid grid-cols-1 @lg:grid-cols-3 gap-4 min-h-0">
+        <div className={`${selected ? '@lg:col-span-2' : '@lg:col-span-3'} bg-white/40 backdrop-blur-xl border border-white/60 rounded-xl p-4 overflow-auto`}>
           <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Core agents</div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3 mb-5">
+          <div className="grid grid-cols-3 @sm:grid-cols-4 @md:grid-cols-7 gap-3 mb-5">
             {agents.filter((a) => a.tier === 'core').map((a) => (
               <AgentNode key={a.name} agent={a} active={selected === a.name} onClick={() => setSelected(a.name)} />
             ))}
           </div>
           <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Sub-agents</div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-3">
+          <div className="grid grid-cols-3 @sm:grid-cols-4 @md:grid-cols-7 gap-3">
             {agents.filter((a) => a.tier === 'sub').map((a) => (
               <AgentNode key={a.name} agent={a} active={selected === a.name} onClick={() => setSelected(a.name)} />
             ))}

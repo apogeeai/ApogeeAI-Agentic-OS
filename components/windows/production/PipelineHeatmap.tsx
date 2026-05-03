@@ -55,7 +55,7 @@ export function PipelineHeatmap() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 @xs:grid-cols-3 gap-3">
         <div className="bg-emerald-100/60 backdrop-blur-sm rounded-lg p-3 border border-emerald-300/60">
           <div className="text-[10px] uppercase tracking-wider text-emerald-800">Total in-flight</div>
           <div className="text-xl font-bold text-gray-900">{stages.reduce((a, s) => a + s.inflight, 0)}</div>

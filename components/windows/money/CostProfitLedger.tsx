@@ -35,7 +35,7 @@ export function CostProfitLedger() {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 @xs:grid-cols-3 gap-3">
         <div className="bg-gradient-to-br from-rose-400/30 to-rose-600/30 backdrop-blur-sm rounded-lg p-3 border border-white/60">
           <div className="text-[10px] uppercase tracking-wider text-rose-800">Daily Burn</div>
           <div className="text-xl font-bold text-gray-900">${dailyBurn.toFixed(2)}</div>

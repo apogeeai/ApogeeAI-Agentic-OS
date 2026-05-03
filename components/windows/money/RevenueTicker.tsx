@@ -62,15 +62,15 @@ export function RevenueTicker() {
         </span>
       </div>
 
-      <div className="bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 backdrop-blur-sm rounded-xl p-5 border border-white/60">
-        <div className="flex items-baseline justify-between">
-          <div>
-            <div className="text-xs text-emerald-800 font-semibold uppercase tracking-wider">Combined MRR</div>
-            <div className="text-4xl font-bold text-gray-900 mt-1">${totalMrr.toLocaleString()}</div>
+      <div className="bg-gradient-to-br from-emerald-400/30 to-emerald-600/30 backdrop-blur-sm rounded-xl p-3 @sm:p-5 border border-white/60">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[10px] @sm:text-xs text-emerald-800 font-semibold uppercase tracking-wider">Combined MRR</div>
+            <div className="text-2xl @sm:text-3xl @md:text-4xl font-bold text-gray-900 mt-1 truncate">${totalMrr.toLocaleString()}</div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-700">Today</div>
-            <div className="text-2xl font-bold text-gray-900">${todayGross}</div>
+            <div className="text-[10px] @sm:text-xs text-gray-700">Today</div>
+            <div className="text-lg @sm:text-xl @md:text-2xl font-bold text-gray-900">${todayGross}</div>
             <Delta pct={dayDelta} />
           </div>
         </div>
@@ -86,7 +86,7 @@ export function RevenueTicker() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 @xs:grid-cols-3 gap-3">
         <div className="bg-white/40 backdrop-blur-sm rounded-lg p-3 border border-white/60">
           <div className="text-[10px] uppercase tracking-wider text-gray-600">vs Yesterday</div>
           <div className="text-xl font-bold text-gray-800 mt-1">${todayGross - yesterdayGross}</div>
@@ -112,12 +112,12 @@ export function RevenueTicker() {
           {perTenant.map((t) => {
             const pct = totalMrr > 0 ? (t.mrr / totalMrr) * 100 : 0;
             return (
-              <div key={t.id} className="flex items-center gap-2 text-xs">
-                <div className="w-32 text-gray-700 truncate">{t.name}</div>
-                <div className="flex-1 h-2 bg-white/50 rounded-full overflow-hidden">
+              <div key={t.id} className="flex items-center gap-2 text-xs min-w-0">
+                <div className="w-20 @sm:w-32 shrink-0 text-gray-700 truncate">{t.name}</div>
+                <div className="flex-1 min-w-0 h-2 bg-white/50 rounded-full overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600" style={{ width: `${pct}%` }} />
                 </div>
-                <div className="w-16 text-right font-semibold text-gray-800">${t.mrr.toLocaleString()}</div>
+                <div className="w-14 @sm:w-16 shrink-0 text-right font-semibold text-gray-800">${t.mrr.toLocaleString()}</div>
               </div>
             );
           })}

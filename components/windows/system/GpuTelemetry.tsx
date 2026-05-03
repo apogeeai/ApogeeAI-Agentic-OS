@@ -52,14 +52,14 @@ export function GpuTelemetry() {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 @md:grid-cols-4 gap-3 mb-4">
         <SummaryTile icon={<Cpu className="w-4 h-4" />} label="GPUs online" value="2 / 2" tone="emerald" />
         <SummaryTile icon={<Zap className="w-4 h-4" />} label="Total VRAM" value={`${(m(1) + m(3)).toFixed(1)} / 48 GB`} tone="sky" />
         <SummaryTile icon={<Layers className="w-4 h-4" />} label="vLLM queue" value={`${(m(4) + m(5)).toFixed(0)} req`} tone="violet" />
         <SummaryTile icon={<Database className="w-4 h-4" />} label="Ollama hit" value={`${m(6).toFixed(0)}%`} tone="amber" />
       </div>
 
-      <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3 overflow-auto">
+      <div className="flex-1 grid grid-cols-2 @md:grid-cols-4 gap-3 overflow-auto">
         {metrics.map((g) => (
           <Gauge key={`${g.label}-${g.sublabel}`} m={g} />
         ))}

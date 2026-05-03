@@ -145,7 +145,7 @@ export function LoraTrainerConsole() {
       </div>
 
       {refs.length > 0 && (
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-3 @xs:grid-cols-4 @sm:grid-cols-5 gap-2">
           {refs.map((r) => (
             <div key={r.id} className="relative group aspect-square rounded-lg overflow-hidden border border-white/60">
               <img src={r.url} alt={r.name} className="w-full h-full object-cover" />
@@ -200,7 +200,7 @@ export function LoraTrainerConsole() {
       {samples.length > 0 && (
         <div className="bg-white/40 backdrop-blur-sm rounded-xl border border-white/60 p-3">
           <div className="text-xs font-semibold text-gray-700 mb-2">Sample previews</div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 @xs:grid-cols-3 gap-2">
             {samples.map((s, i) => (
               <div key={i} className="aspect-square rounded-lg overflow-hidden border border-white/60">
                 <img src={s} alt={`sample ${i}`} className="w-full h-full object-cover" />

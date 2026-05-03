@@ -73,7 +73,7 @@ export function CSuiteStandup() {
         </span>
       </div>
 
-      <div className="flex-1 overflow-auto pr-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="flex-1 overflow-auto pr-1 grid grid-cols-1 @md:grid-cols-2 @xl:grid-cols-3 gap-3">
         {briefs.map((b) => (
           <div key={b.role} className={`bg-gradient-to-br ${b.accent} backdrop-blur-xl border border-white/60 rounded-xl p-3`}>
             <div className="flex items-baseline justify-between mb-2">
