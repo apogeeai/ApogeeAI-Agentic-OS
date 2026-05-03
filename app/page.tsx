@@ -947,6 +947,77 @@ const MIN_WIN_W = 320;
 const MIN_WIN_H = 200;
 const SPRING = { type: 'spring' as const, stiffness: 260, damping: 30, mass: 0.9 };
 
+type SnapZoneType = 'left' | 'right' | 'top' | 'tophalf' | 'bottom' | 'tl' | 'tr' | 'bl' | 'br';
+interface SnapTarget {
+  type: SnapZoneType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function getSnapZone(
+  cx: number,
+  cy: number,
+  sidebarWidth: number,
+  vw: number,
+  vh: number,
+  bottomReserve: number,
+): SnapTarget | null {
+  const EDGE = 8;
+  const TOP_FULL = 4;
+  const TOP_HALF_BAND = 32;
+  const CORNER = 90;
+  const usableVh = Math.max(1, vh - bottomReserve);
+  const usableVw = Math.max(1, vw - sidebarWidth);
+  const halfW = Math.floor(usableVw / 2);
+  const halfH = Math.floor(usableVh / 2);
+  const left = sidebarWidth;
+  const right = vw;
+  const top = 0;
+  const bottom = usableVh;
+
+  const nearLeft = cx <= left + EDGE;
+  const nearRight = cx >= right - EDGE;
+  const nearTopFull = cy <= top + TOP_FULL;
+  const nearTopHalf = cy <= top + TOP_HALF_BAND;
+  const nearTopAny = cy <= top + EDGE || nearTopHalf;
+  const nearBottom = cy >= bottom - EDGE;
+  const inLeftBand = cx <= left + CORNER;
+  const inRightBand = cx >= right - CORNER;
+  const inTopBand = cy <= top + CORNER;
+  const inBottomBand = cy >= bottom - CORNER;
+
+  if ((nearLeft && inTopBand) || (nearTopAny && inLeftBand)) {
+    return { type: 'tl', x: left, y: 0, width: halfW, height: halfH };
+  }
+  if ((nearRight && inTopBand) || (nearTopAny && inRightBand)) {
+    return { type: 'tr', x: left + halfW, y: 0, width: usableVw - halfW, height: halfH };
+  }
+  if ((nearLeft && inBottomBand) || (nearBottom && inLeftBand)) {
+    return { type: 'bl', x: left, y: halfH, width: halfW, height: usableVh - halfH };
+  }
+  if ((nearRight && inBottomBand) || (nearBottom && inRightBand)) {
+    return { type: 'br', x: left + halfW, y: halfH, width: usableVw - halfW, height: usableVh - halfH };
+  }
+  if (nearTopFull) {
+    return { type: 'top', x: left, y: 0, width: usableVw, height: usableVh };
+  }
+  if (nearTopHalf) {
+    return { type: 'tophalf', x: left, y: 0, width: usableVw, height: halfH };
+  }
+  if (nearLeft) {
+    return { type: 'left', x: left, y: 0, width: halfW, height: usableVh };
+  }
+  if (nearRight) {
+    return { type: 'right', x: left + halfW, y: 0, width: usableVw - halfW, height: usableVh };
+  }
+  if (nearBottom) {
+    return { type: 'bottom', x: left, y: halfH, width: usableVw, height: usableVh - halfH };
+  }
+  return null;
+}
+
 function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, setWindows, onContextMenu, sidebarOpen }: WindowProps) {
   const sidebarWidth = sidebarOpen ? 256 : 64;
 
@@ -958,6 +1029,7 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
   const isGesturingRef = useRef(false);
   const didMountRef = useRef(false);
   const gestureCleanupRef = useRef<(() => void) | null>(null);
+  const [snapPreview, setSnapPreview] = useState<SnapTarget | null>(null);
 
   useEffect(() => {
     return () => {
@@ -1009,6 +1081,8 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
     let raf = 0;
     let nextX = baseX;
     let nextY = baseY;
+    let snapTarget: SnapTarget | null = null;
+    let snapCancelled = false;
     const flush = () => {
       x.set(nextX);
       y.set(nextY);
@@ -1019,26 +1093,63 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
       nextX = c.x;
       nextY = c.y;
       if (!raf) raf = requestAnimationFrame(flush);
+      if (snapCancelled) return;
+      const zone = getSnapZone(ev.clientX, ev.clientY, sidebarWidth, vw, vh, DOCK_RESERVE);
+      if (zone?.type !== snapTarget?.type) {
+        snapTarget = zone;
+        setSnapPreview(zone);
+      }
+    };
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        snapCancelled = true;
+        snapTarget = null;
+        setSnapPreview(null);
+      }
     };
     const teardown = (commit: boolean) => {
       if (raf) cancelAnimationFrame(raf);
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('keydown', onKey);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      setSnapPreview(null);
+      const finalSnap = snapTarget;
       isGesturingRef.current = false;
       gestureCleanupRef.current = null;
       if (commit) {
         flush();
-        const fx = x.get();
-        const fy = y.get();
-        setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy } : w2));
+        if (finalSnap) {
+          const target = finalSnap;
+          setWindows((prev: WindowState[]) => prev.map(w2 => {
+            if (w2.id !== win.id) return w2;
+            const currentGeom = { x: w2.x, y: w2.y, width: w2.width, height: w2.height };
+            const previousState = target.type === 'top'
+              ? currentGeom
+              : (w2.previousState ?? currentGeom);
+            return {
+              ...w2,
+              x: target.x,
+              y: target.y,
+              width: target.width,
+              height: target.height,
+              isMaximized: target.type === 'top',
+              previousState,
+            };
+          }));
+        } else {
+          const fx = x.get();
+          const fy = y.get();
+          setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy } : w2));
+        }
       }
     };
     const onUp = () => teardown(true);
     gestureCleanupRef.current = () => teardown(false);
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
+    document.addEventListener('keydown', onKey);
   };
 
   const startResize = (e: React.MouseEvent, dir: ResizeDir) => {
@@ -1115,6 +1226,28 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
   if (win.isMinimized) return null;
 
   return (
+    <>
+    {snapPreview && (
+      <motion.div
+        key="snap-preview"
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.12, ease: 'easeOut' }}
+        className="fixed pointer-events-none rounded-xl"
+        style={{
+          left: snapPreview.x,
+          top: snapPreview.y,
+          width: snapPreview.width,
+          height: snapPreview.height,
+          backgroundColor: 'rgba(96, 165, 250, 0.22)',
+          border: '2px solid rgba(96, 165, 250, 0.75)',
+          boxShadow: '0 0 0 1px rgba(255,255,255,0.4) inset, 0 8px 32px rgba(59,130,246,0.25)',
+          backdropFilter: 'blur(6px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(6px) saturate(140%)',
+          zIndex: 9998,
+        }}
+      />
+    )}
     <motion.div
       onMouseDown={() => bringToFront(win.id)}
       onContextMenu={(e) => onContextMenu(e, win.id)}
@@ -1218,5 +1351,6 @@ function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, se
         </>
       )}
     </motion.div>
+    </>
   );
 }
