@@ -19,8 +19,8 @@ export function MakeMoneyButtons() {
   const fire = (label: string, tenant: string) => {
     // TODO: POST { action: label, tenant } to OpenClaw Gateway → c-suite.briefs
     toast({
-      title: 'Brief queued',
-      description: `${label} → tenant:${tenant}:briefs`,
+      title: `Brief queued: ${label}`,
+      description: `tenant:${tenant}:briefs`,
     });
   };
 
