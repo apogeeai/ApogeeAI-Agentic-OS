@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { motion, PanInfo } from 'framer-motion';
+import { motion, PanInfo, useMotionValue, animate } from 'framer-motion';
 import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle, CheckSquare, BarChart3, Gauge, Radar, TrendingDown, Film, Network, Briefcase } from 'lucide-react';
 import { WindowContent } from '@/components/windows/WindowContent';
 import { WindowErrorBoundary } from '@/components/windows/WindowErrorBoundary';
@@ -744,125 +744,214 @@ interface WindowProps {
   onMinimize: (id: string) => void;
   onMaximize: (id: string) => void;
   bringToFront: (id: string) => void;
-  setWindows: (windows: WindowState[]) => void;
+  setWindows: React.Dispatch<React.SetStateAction<WindowState[]>>;
   windows: WindowState[];
   onContextMenu: (e: React.MouseEvent, windowId: string) => void;
   sidebarOpen: boolean;
 }
 
-function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWindows, windows, onContextMenu, sidebarOpen }: WindowProps) {
+type ResizeDir = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+
+const RESIZE_CURSORS: Record<ResizeDir, string> = {
+  n: 'ns-resize',
+  s: 'ns-resize',
+  e: 'ew-resize',
+  w: 'ew-resize',
+  ne: 'nesw-resize',
+  sw: 'nesw-resize',
+  nw: 'nwse-resize',
+  se: 'nwse-resize',
+};
+
+const MIN_WIN_W = 320;
+const MIN_WIN_H = 200;
+const SPRING = { type: 'spring' as const, stiffness: 260, damping: 30, mass: 0.9 };
+
+function Window({ window: win, onClose, onMinimize, onMaximize, bringToFront, setWindows, windows, onContextMenu, sidebarOpen }: WindowProps) {
   const sidebarWidth = sidebarOpen ? 256 : 64;
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const GRID_SIZE = 20;
 
-  const snapToGrid = (value: number) => {
-    return Math.round(value / GRID_SIZE) * GRID_SIZE;
-  };
+  const x = useMotionValue(win.x);
+  const y = useMotionValue(win.y);
+  const width = useMotionValue(win.width);
+  const height = useMotionValue(win.height);
 
-  const handleResizeMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    bringToFront(window.id);
-    setIsResizing(true);
-    setResizeStart({
-      x: e.clientX,
-      y: e.clientY,
-      width: window.width,
-      height: window.height,
-    });
-  };
+  const isGesturingRef = useRef(false);
+  const didMountRef = useRef(false);
 
+  // Sync motion values from props (skip while user is dragging/resizing).
+  // First mount: snap without animation. Subsequent prop changes: smooth spring.
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isResizing) {
-        const deltaX = e.clientX - resizeStart.x;
-        const deltaY = e.clientY - resizeStart.y;
-
-        const proposedWidth = snapToGrid(Math.max(400, resizeStart.width + deltaX));
-        const proposedHeight = snapToGrid(Math.max(300, resizeStart.height + deltaY));
-        const c = clampWindowToViewport(window.x, window.y, proposedWidth, proposedHeight, sidebarWidth, undefined, undefined, DOCK_RESERVE);
-
-        setWindows(windows.map(w =>
-          w.id === window.id ? { ...w, width: c.width, height: c.height, x: c.x, y: c.y } : w
-        ));
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+    if (isGesturingRef.current) return;
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      x.set(win.x);
+      y.set(win.y);
+      width.set(win.width);
+      height.set(win.height);
+      return;
     }
+    const ax = animate(x, win.x, SPRING);
+    const ay = animate(y, win.y, SPRING);
+    const aw = animate(width, win.width, SPRING);
+    const ah = animate(height, win.height, SPRING);
+    return () => { ax.stop(); ay.stop(); aw.stop(); ah.stop(); };
+  }, [win.x, win.y, win.width, win.height, x, y, width, height]);
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+  const startTitleDrag = (e: React.MouseEvent) => {
+    if (win.isMaximized) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    bringToFront(win.id);
+    isGesturingRef.current = true;
+
+    const startCX = e.clientX;
+    const startCY = e.clientY;
+    const baseX = x.get();
+    const baseY = y.get();
+    const w = width.get();
+    const h = height.get();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+
+    let raf = 0;
+    let nextX = baseX;
+    let nextY = baseY;
+    const flush = () => {
+      x.set(nextX);
+      y.set(nextY);
+      raf = 0;
     };
-  }, [isResizing, resizeStart, window.id, windows, setWindows]);
+    const onMove = (ev: MouseEvent) => {
+      const c = clampWindowToViewport(baseX + (ev.clientX - startCX), baseY + (ev.clientY - startCY), w, h, sidebarWidth, vw, vh, DOCK_RESERVE);
+      nextX = c.x;
+      nextY = c.y;
+      if (!raf) raf = requestAnimationFrame(flush);
+    };
+    const onUp = () => {
+      if (raf) cancelAnimationFrame(raf);
+      flush();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      isGesturingRef.current = false;
+      const fx = x.get();
+      const fy = y.get();
+      setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy } : w2));
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
-  if (window.isMinimized) return null;
+  const startResize = (e: React.MouseEvent, dir: ResizeDir) => {
+    if (win.isMaximized) return;
+    e.preventDefault();
+    e.stopPropagation();
+    bringToFront(win.id);
+    isGesturingRef.current = true;
+
+    const startCX = e.clientX;
+    const startCY = e.clientY;
+    const baseX = x.get();
+    const baseY = y.get();
+    const baseW = width.get();
+    const baseH = height.get();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const bottomLimit = vh - DOCK_RESERVE;
+
+    document.body.style.cursor = RESIZE_CURSORS[dir];
+    document.body.style.userSelect = 'none';
+
+    let raf = 0;
+    let nx = baseX, ny = baseY, nw = baseW, nh = baseH;
+    const flush = () => {
+      x.set(nx); y.set(ny); width.set(nw); height.set(nh);
+      raf = 0;
+    };
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - startCX;
+      const dy = ev.clientY - startCY;
+      let newX = baseX, newY = baseY, newW = baseW, newH = baseH;
+
+      if (dir.includes('e')) {
+        newW = Math.max(MIN_WIN_W, Math.min(baseW + dx, vw - baseX));
+      }
+      if (dir.includes('s')) {
+        newH = Math.max(MIN_WIN_H, Math.min(baseH + dy, bottomLimit - baseY));
+      }
+      if (dir.includes('w')) {
+        const desiredW = Math.max(MIN_WIN_W, Math.min(baseW - dx, baseX + baseW - sidebarWidth));
+        newW = desiredW;
+        newX = baseX + (baseW - desiredW);
+      }
+      if (dir.includes('n')) {
+        const desiredH = Math.max(MIN_WIN_H, Math.min(baseH - dy, baseY + baseH));
+        newH = desiredH;
+        newY = baseY + (baseH - desiredH);
+      }
+
+      nx = newX; ny = newY; nw = newW; nh = newH;
+      if (!raf) raf = requestAnimationFrame(flush);
+    };
+    const onUp = () => {
+      if (raf) cancelAnimationFrame(raf);
+      flush();
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      isGesturingRef.current = false;
+      const fx = x.get(), fy = y.get(), fw = width.get(), fh = height.get();
+      setWindows((prev: WindowState[]) => prev.map(w2 => w2.id === win.id ? { ...w2, x: fx, y: fy, width: fw, height: fh } : w2));
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  if (win.isMinimized) return null;
 
   return (
     <motion.div
-      drag={!window.isMaximized}
-      dragMomentum={false}
-      dragElastic={0}
-      dragConstraints={false}
-      onMouseDown={(e) => {
-        if (!(e.target as HTMLElement).closest('.resize-handle')) {
-          bringToFront(window.id);
-        }
-      }}
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{
-        opacity: 1,
-        scale: 1,
-        x: window.x,
-        y: window.y
-      }}
-      transition={{
-        type: "spring",
-        stiffness: 300,
-        damping: 30,
-        opacity: { duration: 0.2 }
-      }}
-      onDragEnd={(event, info) => {
-        if (!window.isMaximized) {
-          const rawX = snapToGrid(window.x + info.offset.x);
-          const rawY = snapToGrid(window.y + info.offset.y);
-          const c = clampWindowToViewport(rawX, rawY, window.width, window.height, sidebarWidth, undefined, undefined, DOCK_RESERVE);
-          setWindows(windows.map(w =>
-            w.id === window.id ? { ...w, x: c.x, y: c.y, width: c.width, height: c.height } : w
-          ));
-        }
-      }}
+      onMouseDown={() => bringToFront(win.id)}
+      onContextMenu={(e) => onContextMenu(e, win.id)}
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
       className="fixed rounded-xl overflow-hidden shadow-xl"
       style={{
-        width: `${window.width}px`,
-        height: `${window.height}px`,
-        zIndex: window.zIndex,
+        x,
+        y,
+        width,
+        height,
+        top: 0,
+        left: 0,
+        zIndex: win.zIndex,
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         backgroundColor: 'rgba(255, 255, 255, 0.28)',
         border: '1px solid rgba(255, 255, 255, 0.35)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.5)',
+        willChange: 'transform, width, height',
       }}
     >
-
-      <motion.div
+      <div
+        onMouseDown={startTitleDrag}
+        onDoubleClick={(e) => {
+          if (!(e.target as HTMLElement).closest('button')) onMaximize(win.id);
+        }}
         className="h-10 border-b flex items-center justify-between px-4 cursor-grab active:cursor-grabbing select-none relative z-20"
         style={{
           background: 'rgba(255, 255, 255, 0.4)',
           borderBottom: '1px solid rgba(209, 213, 219, 0.3)',
         }}
-        whileTap={{ cursor: 'grabbing' }}
       >
         <div className="flex items-center gap-2 window-controls">
           <motion.button
-            onClick={() => onClose(window.id)}
+            onClick={() => onClose(win.id)}
             className="w-3 h-3 rounded-full bg-red-500 flex items-center justify-center group relative"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
@@ -871,7 +960,7 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
             <X className="w-2 h-2 text-red-900 opacity-0 group-hover:opacity-100 transition-opacity absolute" />
           </motion.button>
           <motion.button
-            onClick={() => onMinimize(window.id)}
+            onClick={() => onMinimize(win.id)}
             className="w-3 h-3 rounded-full bg-yellow-500 flex items-center justify-center group relative"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
@@ -880,7 +969,7 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
             <Minus className="w-2 h-2 text-yellow-900 opacity-0 group-hover:opacity-100 transition-opacity absolute" />
           </motion.button>
           <motion.button
-            onClick={() => onMaximize(window.id)}
+            onClick={() => onMaximize(win.id)}
             className="w-3 h-3 rounded-full bg-green-500 flex items-center justify-center group relative"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
@@ -890,13 +979,13 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
           </motion.button>
         </div>
 
-        <div className="flex items-center gap-2 text-gray-700 font-medium text-sm">
-          <window.icon className="w-4 h-4" />
-          <span>{window.title}</span>
+        <div className="flex items-center gap-2 text-gray-700 font-medium text-sm pointer-events-none">
+          <win.icon className="w-4 h-4" />
+          <span>{win.title}</span>
         </div>
 
         <div className="w-12" />
-      </motion.div>
+      </div>
 
       <div
         className="p-6 h-[calc(100%-40px)] overflow-auto relative z-20"
@@ -904,21 +993,29 @@ function Window({ window, onClose, onMinimize, onMaximize, bringToFront, setWind
           background: 'rgba(255, 255, 255, 0.1)',
         }}
       >
-        <WindowErrorBoundary title={window.title}>
-          <WindowContent content={window.content} title={window.title} />
+        <WindowErrorBoundary title={win.title}>
+          <WindowContent content={win.content} title={win.title} />
         </WindowErrorBoundary>
       </div>
 
-      {!window.isMaximized && (
-        <motion.div
-          className="resize-handle absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize z-30"
-          onMouseDown={handleResizeMouseDown}
-          whileHover={{ scale: 1.1 }}
-          style={{
-            background: 'linear-gradient(135deg, transparent 0%, transparent 50%, rgba(100,100,100,0.5) 50%, rgba(100,100,100,0.5) 100%)',
-            borderBottomRightRadius: '0.75rem',
-          }}
-        />
+      {!win.isMaximized && (
+        <>
+          <div onMouseDown={(e) => startResize(e, 'n')} className="absolute top-0 left-3 right-3 h-1.5 cursor-ns-resize z-30" />
+          <div onMouseDown={(e) => startResize(e, 's')} className="absolute bottom-0 left-3 right-3 h-1.5 cursor-ns-resize z-30" />
+          <div onMouseDown={(e) => startResize(e, 'w')} className="absolute left-0 top-3 bottom-3 w-1.5 cursor-ew-resize z-30" />
+          <div onMouseDown={(e) => startResize(e, 'e')} className="absolute right-0 top-3 bottom-3 w-1.5 cursor-ew-resize z-30" />
+          <div onMouseDown={(e) => startResize(e, 'nw')} className="absolute top-0 left-0 w-3 h-3 cursor-nwse-resize z-40" />
+          <div onMouseDown={(e) => startResize(e, 'ne')} className="absolute top-0 right-0 w-3 h-3 cursor-nesw-resize z-40" />
+          <div onMouseDown={(e) => startResize(e, 'sw')} className="absolute bottom-0 left-0 w-3 h-3 cursor-nesw-resize z-40" />
+          <div
+            onMouseDown={(e) => startResize(e, 'se')}
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize z-40"
+            style={{
+              background: 'linear-gradient(135deg, transparent 0%, transparent 55%, rgba(100,100,100,0.45) 55%, rgba(100,100,100,0.45) 100%)',
+              borderBottomRightRadius: '0.75rem',
+            }}
+          />
+        </>
       )}
     </motion.div>
   );
