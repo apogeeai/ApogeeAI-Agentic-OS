@@ -73,7 +73,7 @@ export function RevenueTicker() {
               <XAxis dataKey="day" hide />
               <Tooltip
                 contentStyle={{ background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: 8, fontSize: 11 }}
-                formatter={(v: any) => [`$${v}`, 'Revenue']}
+                formatter={(v: number | string) => [`$${v}`, 'Revenue']}
               />
               <Line type="monotone" dataKey="value" stroke="#047857" strokeWidth={2.5} dot={false} />
             </LineChart>

@@ -61,7 +61,7 @@ export function CostProfitLedger() {
               <YAxis type="category" dataKey="model" tick={{ fontSize: 10, fill: '#374151' }} width={130} />
               <Tooltip
                 contentStyle={{ background: 'rgba(255,255,255,0.95)', border: 'none', borderRadius: 8, fontSize: 11 }}
-                formatter={(v: any) => [`$${v.toFixed(2)}`, 'Spend']}
+                formatter={(v: number) => [`$${v.toFixed(2)}`, 'Spend']}
               />
               <Bar dataKey="spend" radius={[0, 4, 4, 0]}>
                 {MODEL_SPEND.map((m, i) => <Cell key={i} fill={m.color} />)}
