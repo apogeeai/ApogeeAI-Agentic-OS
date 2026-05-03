@@ -32,6 +32,10 @@ import { DeadLetterInbox } from './production/DeadLetterInbox';
 import { ApprovalQueue } from './quality/ApprovalQueue';
 import { TastemakerHistogram } from './quality/TastemakerHistogram';
 import { BrandDriftMonitor } from './quality/BrandDriftMonitor';
+import { TrendRadar } from './intelligence/TrendRadar';
+import { RevenueSimulator } from './intelligence/RevenueSimulator';
+import { BestTimeHeatmap } from './intelligence/BestTimeHeatmap';
+import { ChurnForecast } from './intelligence/ChurnForecast';
 
 interface WindowContentProps {
   content: string;
@@ -79,6 +83,14 @@ export function WindowContent({ content, title }: WindowContentProps) {
         return <TastemakerHistogram />;
       case 'brand-drift':
         return <BrandDriftMonitor />;
+      case 'trend-radar':
+        return <TrendRadar />;
+      case 'revenue-simulator':
+        return <RevenueSimulator />;
+      case 'best-time-heatmap':
+        return <BestTimeHeatmap />;
+      case 'churn-forecast':
+        return <ChurnForecast />;
       case 'kanban':
         return <KanbanWindow />;
       case 'workflows':

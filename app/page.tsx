@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, PanInfo } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle, CheckSquare, BarChart3, Gauge } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle, CheckSquare, BarChart3, Gauge, Radar, TrendingDown } from 'lucide-react';
 import { WindowContent } from '@/components/windows/WindowContent';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -72,6 +72,7 @@ export default function Desktop() {
     'Money': true,
     'Production': true,
     'Quality': true,
+    'Intelligence': true,
     'Projects': true,
     'Development': true,
     'Collaboration': false,
@@ -171,6 +172,12 @@ export default function Desktop() {
       { icon: CheckSquare, label: 'Approval Queue', active: false, href: '#', content: 'approval-queue' },
       { icon: BarChart3, label: 'Tastemaker Scores', active: false, href: '#', content: 'tastemaker-histogram' },
       { icon: Gauge, label: 'Brand Drift', active: false, href: '#', content: 'brand-drift' },
+    ],
+    'Intelligence': [
+      { icon: Radar, label: 'Trend Radar', active: false, href: '#', content: 'trend-radar' },
+      { icon: LineChart, label: 'Revenue Simulator', active: false, href: '#', content: 'revenue-simulator' },
+      { icon: Calendar, label: 'Best-Time Heatmap', active: false, href: '#', content: 'best-time-heatmap' },
+      { icon: TrendingDown, label: 'Churn Forecast', active: false, href: '#', content: 'churn-forecast' },
     ],
     'Projects': [
       { icon: FileText, label: 'Task Ledger', active: false, href: '#', content: 'task-ledger' },
