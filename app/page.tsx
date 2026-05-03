@@ -180,30 +180,24 @@ export default function Desktop() {
 
     const sidebarWidth = sidebarOpen ? 256 : 64;
     const TOP_RESERVE = 20;
+    const GAP = 16;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    const topZoneHeight = Math.max(200, viewportHeight * 0.4);
-
-    const availableWidth = Math.max(400, viewportWidth - sidebarWidth - 16);
+    const topZoneHeight = Math.max(220, viewportHeight * 0.4);
+    const availableWidth = Math.max(400, viewportWidth - sidebarWidth - GAP);
     const availableHeight = Math.max(200, topZoneHeight - TOP_RESERVE);
 
-    const windowWidth = Math.min(800, availableWidth);
+    const visibleCount = windows.filter(w => !w.isMinimized).length;
+    const slotsPerRow = Math.max(1, Math.min(4, visibleCount + 1));
+    const rawWindowWidth = (availableWidth - GAP * (slotsPerRow - 1)) / slotsPerRow;
+    const windowWidth = Math.max(360, Math.min(800, rawWindowWidth));
     const windowHeight = Math.min(500, availableHeight);
 
-    const centerX = sidebarWidth + (availableWidth - windowWidth) / 2;
-    const centerY = TOP_RESERVE;
-
-    const CASCADE_OFFSET = 30;
-    const windowCount = windows.filter(w => !w.isMinimized).length;
-    const offsetX = (windowCount * CASCADE_OFFSET) % 150;
-    const offsetY = (windowCount * CASCADE_OFFSET) % Math.max(20, (topZoneHeight - windowHeight - TOP_RESERVE));
-
-    const maxX = viewportWidth - windowWidth;
-    const maxY = Math.max(TOP_RESERVE, topZoneHeight - windowHeight);
-    const clampedX = Math.min(Math.max(sidebarWidth, centerX + offsetX), maxX);
-    const clampedY = Math.min(Math.max(TOP_RESERVE, centerY + offsetY), maxY);
+    const slotIndex = visibleCount % slotsPerRow;
+    const clampedX = snapToGrid(sidebarWidth + slotIndex * (windowWidth + GAP));
+    const clampedY = snapToGrid(TOP_RESERVE);
 
     const newWindow: WindowState = {
       id: `window-${Date.now()}`,
