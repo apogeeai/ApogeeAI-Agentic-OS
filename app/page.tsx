@@ -210,12 +210,16 @@ export default function Desktop() {
     const col = slotIndex % cols;
     const row = Math.floor(slotIndex / cols);
 
-    const rawX = sidebarWidth + col * (windowWidth + GAP);
-    const rawY = TOP_RESERVE + row * (windowHeight + GAP);
-    const maxX = Math.max(sidebarWidth, viewportWidth - windowWidth);
-    const maxY = Math.max(TOP_RESERVE, viewportHeight - windowHeight);
-    const finalX = snapToGrid(Math.min(Math.max(sidebarWidth, rawX), maxX));
-    const finalY = snapToGrid(Math.min(Math.max(TOP_RESERVE, rawY), maxY));
+    const finalWidth = Math.floor(windowWidth);
+    const finalHeight = Math.floor(windowHeight);
+    const rawX = sidebarWidth + col * (finalWidth + GAP);
+    const rawY = TOP_RESERVE + row * (finalHeight + GAP);
+    const maxX = Math.max(sidebarWidth, viewportWidth - finalWidth);
+    const maxY = Math.max(TOP_RESERVE, viewportHeight - finalHeight);
+    const snappedX = snapToGrid(Math.min(Math.max(sidebarWidth, rawX), maxX));
+    const snappedY = snapToGrid(Math.min(Math.max(TOP_RESERVE, rawY), maxY));
+    const finalX = Math.min(Math.max(0, snappedX), maxX);
+    const finalY = Math.min(Math.max(0, snappedY), maxY);
 
     const newWindow: WindowState = {
       id: `window-${Date.now()}`,
@@ -223,8 +227,8 @@ export default function Desktop() {
       icon: item.icon,
       x: finalX,
       y: finalY,
-      width: Math.round(windowWidth),
-      height: Math.round(windowHeight),
+      width: finalWidth,
+      height: finalHeight,
       isMinimized: false,
       isMaximized: false,
       zIndex: highestZIndex + 1,
