@@ -183,14 +183,17 @@ export default function Desktop() {
     const SIDE_PAD = 16;
     const GAP = 16;
     const MIN_WINDOW_WIDTH = 320;
-    const MIN_WINDOW_HEIGHT = 240;
+    const MIN_WINDOW_HEIGHT = 200;
     const TARGET_WINDOW_WIDTH = 480;
-    const TARGET_WINDOW_HEIGHT = 360;
+    const TARGET_WINDOW_HEIGHT = 320;
+    const MIN_ROWS = 2;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    const topZoneHeight = Math.max(MIN_WINDOW_HEIGHT + TOP_RESERVE, viewportHeight * 0.4);
+    const minZoneForRows = MIN_ROWS * MIN_WINDOW_HEIGHT + (MIN_ROWS - 1) * GAP + TOP_RESERVE;
+    const maxZone = Math.max(MIN_WINDOW_HEIGHT + TOP_RESERVE, viewportHeight - 80);
+    const topZoneHeight = Math.min(maxZone, Math.max(viewportHeight * 0.4, minZoneForRows));
     const availableWidth = Math.max(MIN_WINDOW_WIDTH, viewportWidth - sidebarWidth - SIDE_PAD);
     const availableHeight = Math.max(MIN_WINDOW_HEIGHT, topZoneHeight - TOP_RESERVE);
 
