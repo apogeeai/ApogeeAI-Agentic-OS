@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, PanInfo } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle, CheckSquare, BarChart3, Gauge, Radar, TrendingDown, Film } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Settings, Grid3x3, Chrome as Home, Radio, User, FileText, CirclePlay as PlayCircle, Bot, Workflow, Brain, Terminal, Code, Database, CloudCog, GitBranch, ChartLine as LineChart, MessagesSquare, Calendar, Folder, Clock, Zap, Maximize2, Minimize, Minus, X, Monitor, Image as ImageIcon, Square, Bell, Activity, Inbox, GitPullRequest, Cpu, DollarSign, TrendingUp, Package, Wrench, Users, LayoutGrid, Receipt, Sparkles, AlertTriangle, CheckSquare, BarChart3, Gauge, Radar, TrendingDown, Film, Network, Briefcase } from 'lucide-react';
 import { WindowContent } from '@/components/windows/WindowContent';
 import { Toaster } from '@/components/ui/toaster';
 
@@ -74,6 +74,7 @@ export default function Desktop() {
     'Quality': true,
     'Intelligence': true,
     'Creative': true,
+    'Health': true,
     'Projects': true,
     'Development': true,
     'Collaboration': false,
@@ -183,6 +184,11 @@ export default function Desktop() {
     'Creative': [
       { icon: Brain, label: 'LoRA Trainer', active: false, href: '#', content: 'lora-trainer' },
       { icon: Film, label: 'Video Motion Lab', active: false, href: '#', content: 'video-motion-lab' },
+    ],
+    'Health': [
+      { icon: Network, label: 'Agent Swarm Grid', active: false, href: '#', content: 'agent-swarm-grid' },
+      { icon: Cpu, label: 'GPU Telemetry', active: false, href: '#', content: 'gpu-telemetry' },
+      { icon: Briefcase, label: 'C-Suite Standup', active: false, href: '#', content: 'c-suite-standup' },
     ],
     'Projects': [
       { icon: FileText, label: 'Task Ledger', active: false, href: '#', content: 'task-ledger' },

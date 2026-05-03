@@ -38,6 +38,9 @@ import { BestTimeHeatmap } from './intelligence/BestTimeHeatmap';
 import { ChurnForecast } from './intelligence/ChurnForecast';
 import { LoraTrainerConsole } from './creative/LoraTrainerConsole';
 import { VideoMotionLab } from './creative/VideoMotionLab';
+import { AgentSwarmGrid } from './system/AgentSwarmGrid';
+import { GpuTelemetry } from './system/GpuTelemetry';
+import { CSuiteStandup } from './system/CSuiteStandup';
 
 interface WindowContentProps {
   content: string;
@@ -97,6 +100,12 @@ export function WindowContent({ content, title }: WindowContentProps) {
         return <LoraTrainerConsole />;
       case 'video-motion-lab':
         return <VideoMotionLab />;
+      case 'agent-swarm-grid':
+        return <AgentSwarmGrid />;
+      case 'gpu-telemetry':
+        return <GpuTelemetry />;
+      case 'c-suite-standup':
+        return <CSuiteStandup />;
       case 'kanban':
         return <KanbanWindow />;
       case 'workflows':
