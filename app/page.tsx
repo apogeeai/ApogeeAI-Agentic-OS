@@ -196,11 +196,13 @@ export default function Desktop() {
 
     const cols = Math.max(1, Math.floor((availableWidth + GAP) / (MIN_WINDOW_WIDTH + GAP)));
     const rawWindowWidth = (availableWidth - GAP * (cols - 1)) / cols;
-    const windowWidth = Math.max(MIN_WINDOW_WIDTH, Math.min(TARGET_WINDOW_WIDTH, rawWindowWidth));
+    const widthCap = Math.max(1, viewportWidth - sidebarWidth - SIDE_PAD);
+    const windowWidth = Math.max(1, Math.min(widthCap, TARGET_WINDOW_WIDTH, Math.max(MIN_WINDOW_WIDTH, rawWindowWidth)));
 
     const rows = Math.max(1, Math.floor((availableHeight + GAP) / (MIN_WINDOW_HEIGHT + GAP)));
     const rawWindowHeight = (availableHeight - GAP * (rows - 1)) / rows;
-    const windowHeight = Math.max(MIN_WINDOW_HEIGHT, Math.min(TARGET_WINDOW_HEIGHT, rawWindowHeight));
+    const heightCap = Math.max(1, viewportHeight - TOP_RESERVE);
+    const windowHeight = Math.max(1, Math.min(heightCap, TARGET_WINDOW_HEIGHT, Math.max(MIN_WINDOW_HEIGHT, rawWindowHeight)));
 
     const slotsPerZone = Math.max(1, cols * rows);
     const visibleCount = windows.filter(w => !w.isMinimized).length;
