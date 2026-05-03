@@ -36,6 +36,8 @@ import { TrendRadar } from './intelligence/TrendRadar';
 import { RevenueSimulator } from './intelligence/RevenueSimulator';
 import { BestTimeHeatmap } from './intelligence/BestTimeHeatmap';
 import { ChurnForecast } from './intelligence/ChurnForecast';
+import { LoraTrainerConsole } from './creative/LoraTrainerConsole';
+import { VideoMotionLab } from './creative/VideoMotionLab';
 
 interface WindowContentProps {
   content: string;
@@ -91,6 +93,10 @@ export function WindowContent({ content, title }: WindowContentProps) {
         return <BestTimeHeatmap />;
       case 'churn-forecast':
         return <ChurnForecast />;
+      case 'lora-trainer':
+        return <LoraTrainerConsole />;
+      case 'video-motion-lab':
+        return <VideoMotionLab />;
       case 'kanban':
         return <KanbanWindow />;
       case 'workflows':
