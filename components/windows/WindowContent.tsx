@@ -21,6 +21,10 @@ import { PipelineFlowWindow } from './PipelineFlowWindow';
 import { WiggumLoopWindow } from './WiggumLoopWindow';
 import { GPUMonitorWindow } from './GPUMonitorWindow';
 import { RevenueTrackerWindow } from './RevenueTrackerWindow';
+import { RevenueTicker } from './money/RevenueTicker';
+import { EmpirePnL } from './money/EmpirePnL';
+import { CostProfitLedger } from './money/CostProfitLedger';
+import { MakeMoneyButtons } from './money/MakeMoneyButtons';
 
 interface WindowContentProps {
   content: string;
@@ -46,6 +50,14 @@ export function WindowContent({ content, title }: WindowContentProps) {
         return <GPUMonitorWindow />;
       case 'revenue-tracker':
         return <RevenueTrackerWindow />;
+      case 'revenue-ticker':
+        return <RevenueTicker />;
+      case 'empire-pnl':
+        return <EmpirePnL />;
+      case 'cost-profit':
+        return <CostProfitLedger />;
+      case 'make-money':
+        return <MakeMoneyButtons />;
       case 'kanban':
         return <KanbanWindow />;
       case 'workflows':

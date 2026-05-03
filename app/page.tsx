@@ -69,6 +69,7 @@ export default function Desktop() {
   const greenNoiseRef = useRef<HTMLAudioElement | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'Dashboard': true,
+    'Money': true,
     'Projects': true,
     'Development': true,
     'Collaboration': false,
@@ -151,6 +152,12 @@ export default function Desktop() {
       { icon: Monitor, label: 'Desktop', active: true, href: '/' },
       { icon: Activity, label: 'Director Status', active: false, href: '#', content: 'director-status' },
       { icon: Bell, label: 'Notifications', active: false, href: '#', content: 'notifications' },
+    ],
+    'Money': [
+      { icon: Activity, label: 'Revenue Ticker', active: false, href: '#', content: 'revenue-ticker' },
+      { icon: TrendingUp, label: 'Empire P&L', active: false, href: '#', content: 'empire-pnl' },
+      { icon: DollarSign, label: 'Cost & Profit', active: false, href: '#', content: 'cost-profit' },
+      { icon: Zap, label: 'Make Money', active: false, href: '#', content: 'make-money' },
     ],
     'Projects': [
       { icon: FileText, label: 'Task Ledger', active: false, href: '#', content: 'task-ledger' },
