@@ -70,17 +70,25 @@ export function ApprovalQueue() {
       if (prev.length === 0) return prev;
       const [head, ...rest] = prev;
       // TODO: POST { id: head.id, decision } to gateway → tenant:<id>:approvals stream
-      toast({
-        title: decision === 'approve' ? `Approved: ${head.title}` : `Killed: ${head.title}`,
-        description: TENANT_LABEL[head.tenant],
+      // Defer toast + stats to a microtask so the state updater stays pure.
+      Promise.resolve().then(() => {
+        toast({
+          title: decision === 'approve' ? `Approved: ${head.title}` : `Killed: ${head.title}`,
+          description: TENANT_LABEL[head.tenant],
+        });
+        setStats((s) => ({
+          approved: s.approved + (decision === 'approve' ? 1 : 0),
+          killed: s.killed + (decision === 'kill' ? 1 : 0),
+        }));
       });
       return rest;
     });
-    setStats((s) => ({ approved: s.approved + (decision === 'approve' ? 1 : 0), killed: s.killed + (decision === 'kill' ? 1 : 0) }));
   }, [toast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
       if (e.key === 'ArrowRight') decide('approve');
       else if (e.key === 'ArrowLeft') decide('kill');
     };
